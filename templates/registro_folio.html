@@ -8,13 +8,14 @@
 <body>
     <h1>Registrar Nuevo Folio</h1>
     <form method="POST" action="{{ url_for('registro_folio') }}">
+        <input type="text" name="folio" placeholder="Folio" required><br>
         <input type="text" name="marca" placeholder="Marca" required><br>
         <input type="text" name="linea" placeholder="Línea" required><br>
         <input type="text" name="anio" placeholder="Año" required><br>
         <input type="text" name="serie" placeholder="Número de serie" required><br>
         <input type="text" name="motor" placeholder="Número de motor" required><br>
         <input type="text" name="color" placeholder="Color" required><br>
-        <input type="text" name="nombre" placeholder="Nombre del contribuyente" required><br>
+        <input type="text" name="contribuyente" placeholder="Nombre del contribuyente" required><br>
         <select name="vigencia" required>
             <option value="30">30 días</option>
             <option value="60">60 días</option>
