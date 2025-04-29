@@ -5,92 +5,21 @@
     <title>Consulta de Folio</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body {
-            font-family: 'Georgia', serif;
-            margin: 0;
-            background-color: #fff;
-        }
-
-        header img {
-            width: 100%;
-            display: block;
-        }
-
-        .titulo {
-            text-align: center;
-            font-size: 26px;
-            margin-top: 20px;
-            font-weight: bold;
-            color: #003366;
-        }
-
-        main {
-            max-width: 500px;
-            margin: 0 auto;
-            padding: 30px 20px;
-            text-align: center;
-        }
-
-        input[type="text"] {
-            width: 100%;
-            padding: 14px;
-            border-radius: 6px;
-            border: 1px solid #ccc;
-            margin-bottom: 25px;
-            font-size: 16px;
-        }
-
-        button {
-            background-color: #004B87;
-            color: white;
-            padding: 12px 20px;
-            border: none;
-            border-radius: 6px;
-            font-size: 16px;
-            cursor: pointer;
-        }
-
-        button:hover {
-            background-color: #005fa3;
-        }
-
-        footer img {
-            width: 100%;
-            display: block;
-        }
-
-        @media (max-width: 600px) {
-            .titulo {
-                font-size: 22px;
-                margin-top: 16px;
-            }
-            main {
-                padding: 20px 10px;
-            }
-            button {
-                width: 100%;
-            }
-        }
+      /* … tu CSS aquí … */
     </style>
 </head>
 <body>
-
-    <header>
-        <img src="{{ url_for('static', filename='Cabezaguana.jpg') }}" alt="Encabezado">
-    </header>
+    <header></header>
 
     <div class="titulo">CONSULTA TU FOLIO</div>
 
     <main>
-        <form action="/consulta_folio" method="POST">
+        <form method="POST" action="{{ url_for('consulta_folio') }}"> <!-- CAMBIO -->
             <input type="text" name="folio" placeholder="Ingresa tu folio" required>
             <button type="submit">Consultar</button>
         </form>
     </main>
 
-    <footer>
-        <img src="{{ url_for('static', filename='Piesguana.jpg') }}" alt="Pie de página">
-    </footer>
-
+    <footer></footer>
 </body>
 </html>
