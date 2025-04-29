@@ -1,97 +1,105 @@
-<!DOCTYPE html><html lang="es">
+<!DOCTYPE html>
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <title>Resultado de Consulta</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
         body {
-            background-image: url('{{ url_for('static', filename='grecas_fondo.png') }}');
-            background-size: cover;
-            background-position: center;
-            background-repeat: repeat;
-            font-family: 'Arial', sans-serif;
             margin: 0;
             padding: 0;
+            background: url('{{ url_for('static', filename='fondogrecas.jpg') }}') repeat;
+            background-size: cover;
+            font-family: Arial, sans-serif;
         }
-        .encabezado {
+        .contenedor {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: rgba(255,255,255,0.9);
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        .logo-arriba {
             width: 100%;
             display: block;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
         }
-        .tarjeta {
-            background: #f0f8ff;
-            border: 2px solid #7bb1e0;
-            border-radius: 10px;
-            padding: 20px;
-            width: 90%;
-            max-width: 500px;
-            margin: 20px auto;
-        }
-        .tarjeta h2 {
-            background: #3498db;
+        .titulo {
+            background-color: #3498db;
             color: white;
+            text-align: center;
             padding: 10px;
-            margin-top: 0;
-            border-radius: 8px 8px 0 0;
-            font-size: 20px;
+            font-size: 18px;
+            border-radius: 5px 5px 0 0;
+        }
+        .datos {
+            background-color: #ecf6fb;
+            padding: 15px;
+            font-size: 16px;
+            border: 2px solid #3498db;
+            border-top: none;
         }
         .dato {
-            margin: 10px 0;
-            font-size: 16px;
-            color: #333;
+            margin-bottom: 10px;
         }
-        .banda {
-            background: #e0e0e0;
-            text-align: center;
-            padding: 8px;
+        .dato strong {
             font-weight: bold;
-            margin-top: 10px;
-            border-radius: 0 0 8px 8px;
         }
-        .logos {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 30px;
-            margin: 20px auto 10px;
-        }
-        .logos img {
-            height: 60px;
-            object-fit: contain;
-        }
-        .final {
+        .permiso {
+            background-color: #dfe6e9;
             text-align: center;
-            color: #333;
-            font-size: 18px;
-            margin-bottom: 30px;
+            padding: 10px;
+            font-size: 16px;
             margin-top: 10px;
+            border-top: 1px solid #3498db;
+        }
+        .logos-abajo {
+            margin-top: 20px;
+            text-align: center;
+        }
+        .logos-abajo img {
+            width: 90px;
+            margin: 10px;
+        }
+        .ltm {
+            text-align: center;
+            font-size: 18px;
+            color: #34495e;
+            margin-top: 10px;
+            margin-bottom: 20px;
         }
     </style>
 </head>
-<body><img src="{{ url_for('static', filename='encabezado_guerrero.png') }}" class="encabezado" alt="Encabezado">
+<body>
 
-<div class="tarjeta">
-    <h2>Verificador de Permiso</h2>
+    <div class="contenedor">
+        <img src="{{ url_for('static', filename='logoarriba.png') }}" alt="Logo Guerrero" class="logo-arriba">
 
-    <div class="dato"><strong>Marca:</strong> {{ resultado.marca }}</div>
-    <div class="dato"><strong>Línea:</strong> {{ resultado.linea }}</div>
-    <div class="dato"><strong>Modelo:</strong> {{ resultado.año }}</div>
-    <div class="dato"><strong>Color:</strong> {{ resultado.color }}</div>
-    <div class="dato"><strong>Número de Serie:</strong> {{ resultado.numero_serie }}</div>
-    <div class="dato"><strong>Número de Motor:</strong> {{ resultado.numero_motor }}</div>
-    <div class="dato"><strong>Fecha Expedición:</strong> {{ resultado.fecha_expedicion }}</div>
-    <div class="dato"><strong>Fecha Vencimiento:</strong> {{ resultado.fecha_vencimiento }}</div>
+        <div class="titulo">Verificador de Permiso</div>
 
-    <div class="banda">Permiso de Tránsito Municipal</div>
-</div>
+        <div class="datos">
+            <div class="dato"><strong>Marca:</strong> {{ resultado.marca }}</div>
+            <div class="dato"><strong>Línea:</strong> {{ resultado.linea }}</div>
+            <div class="dato"><strong>Modelo:</strong> {{ resultado.año }}</div>
+            <div class="dato"><strong>Color:</strong> {{ resultado.color }}</div>
+            <div class="dato"><strong>Número de Serie:</strong> {{ resultado.numero_serie }}</div>
+            <div class="dato"><strong>Número de Motor:</strong> {{ resultado.numero_motor }}</div>
+            <div class="dato"><strong>Fecha Expedición:</strong> {{ resultado.fecha_expedicion }}</div>
+            <div class="dato"><strong>Fecha Vencimiento:</strong> {{ resultado.fecha_vencimiento }}</div>
+        </div>
 
-<div class="logos">
-    <img src="{{ url_for('static', filename='tlapa_logo.png') }}" alt="Tlapa Logo">
-    <img src="{{ url_for('static', filename='gobierno_logo.png') }}" alt="Gobierno Logo">
-</div>
+        <div class="permiso">Permiso de Tránsito Municipal</div>
 
-<div class="final">LTM | Tlapa de Comonfort Gro.</div>
+        <div class="logos-abajo">
+            <img src="{{ url_for('static', filename='logotlapa.png') }}" alt="Tlapa Logo">
+            <img src="{{ url_for('static', filename='logogobierno.png') }}" alt="Gobierno Logo">
+        </div>
+
+        <div class="ltm">
+            LTM | Tlapa de Comonfort Gro.
+        </div>
+    </div>
 
 </body>
 </html>
