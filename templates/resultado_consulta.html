@@ -1,161 +1,142 @@
-<!DOCTYPE html><html lang="es">
+<!DOCTYPE html>
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <title>Resultado de Consulta</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         body {
-            background-color: #ffffff;
-            font-family: 'Georgia', serif;
             margin: 0;
             padding: 0;
-        }header img {
-        width: 80%; /* Reducido 20% */
-        display: block;
-        margin: 20px auto 0 auto;
-    }
-
-    .titulo {
-        text-align: center;
-        font-size: 22px;
-        margin-top: 10px;
-        font-weight: bold;
-        color: #003366;
-    }
-
-    .estado {
-        text-align: center;
-        font-size: 20px;
-        font-weight: bold;
-        margin-top: 20px;
-        padding: 12px;
-        border-radius: 8px;
-        width: 80%;
-        max-width: 500px;
-        margin-left: auto;
-        margin-right: auto;
-        background-color: #003366;
-        color: white;
-    }
-
-    .vencido {
-        background-color: #b38b00 !important;
-    }
-
-    .no-encontrado {
-        background-color: #a00000 !important;
-    }
-
-    .certificado {
-        border: 2px solid #cce6f5;
-        padding: 20px 15px;
-        border-radius: 10px;
-        width: 80%;
-        max-width: 500px;
-        margin: 20px auto;
-        background-color: #e6f2fb;
-        color: #003366;
-    }
-
-    .dato {
-        margin-bottom: 20px;
-        font-size: 14px;
-        text-align: left;
-    }
-
-    .dato strong {
-        display: block;
-        font-size: 14px;
-        margin-bottom: 4px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-
-    .valido {
-        text-align: center;
-        font-weight: bold;
-        margin-top: 20px;
-        color: #003366;
-        font-size: 20px;
-    }
-
-    footer {
-        text-align: center;
-        font-size: 14px;
-        color: #777;
-        margin-top: 20px;
-        padding-bottom: 10px;
-    }
-
-    @media (max-width: 600px) {
-        .titulo {
-            font-size: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-image: url("{{ url_for('static', filename='img/fondo_grecas.png') }}");
+            background-size: cover;
+            background-repeat: repeat;
         }
+
+        header {
+            text-align: center;
+            padding: 10px 0;
+        }
+
+        header img {
+            width: 75%;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 20px auto;
+            background-color: #f7fbff;
+            border-radius: 10px;
+            padding: 20px;
+            border: 2px solid #87CEFA;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
         .estado {
+            background-color: #1e90ff;
+            color: white;
+            padding: 10px;
+            border-radius: 6px 6px 0 0;
+            font-weight: bold;
+            text-align: center;
             font-size: 18px;
         }
-    }
-</style>
 
+        .dato {
+            margin: 10px 0;
+            font-size: 16px;
+        }
+
+        .dato span {
+            font-weight: bold;
+        }
+
+        .footer {
+            background-color: #e0e0e0;
+            padding: 10px;
+            text-align: center;
+            font-weight: bold;
+            border-radius: 0 0 6px 6px;
+            font-size: 14px;
+        }
+
+        .logos {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .logos img {
+            height: 80px;
+            margin: 0 15px;
+        }
+
+        .ltm {
+            text-align: center;
+            font-size: 35px;
+            font-weight: normal;
+            color: #000;
+            margin-top: 10px;
+            padding-bottom: 30px;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                width: 90%;
+            }
+
+            .logos img {
+                height: 70px;
+            }
+
+            .ltm {
+                font-size: 30px;
+            }
+        }
+    </style>
 </head>
-<body><header>
-    <img src="{{ url_for('static', filename='img/guerrero_logo.png') }}" alt="Encabezado">
-</header>
+<body>
 
-<div class="titulo">RESULTADO DE CONSULTA DIGITAL</div>
+    <header>
+        <img src="{{ url_for('static', filename='img/guerrero_logo.png') }}" alt="Encabezado Guerrero">
+    </header>
 
-{% if resultado.estado == "No encontrado" %}
-    <div class="estado no-encontrado">
-        FOLIO {{ resultado.folio }} : NO SE ENCUENTRA REGISTRADO
-    </div>
-{% elif resultado.estado == "VENCIDO" %}
-    <div class="estado vencido">
-        FOLIO {{ resultado.folio }} : VENCIDO
-    </div>
-{% else %}
-    <div class="estado">
-        FOLIO {{ resultado.folio }} : VIGENTE
-    </div>
-{% endif %}
+    <div class="container">
+        {% if resultado.estado == "No encontrado" %}
+            <div class="estado" style="background-color: #a00000;">
+                FOLIO {{ resultado.folio }} : NO SE ENCUENTRA REGISTRADO
+            </div>
+        {% elif resultado.estado == "VENCIDO" %}
+            <div class="estado" style="background-color: #b38b00;">
+                FOLIO {{ resultado.folio }} : VENCIDO
+            </div>
+        {% else %}
+            <div class="estado">
+                FOLIO {{ resultado.folio }} : VIGENTE
+            </div>
+        {% endif %}
 
-{% if resultado.estado != "No encontrado" %}
-<div class="certificado">
-    <div class="dato">
-        <strong>Fecha de Expedición:</strong>
-        {{ resultado.fecha_expedicion }}
+        {% if resultado.estado != "No encontrado" %}
+            <div class="dato"><span>Marca:</span> {{ resultado.marca }}</div>
+            <div class="dato"><span>Línea:</span> {{ resultado.linea }}</div>
+            <div class="dato"><span>Modelo:</span> {{ resultado.año }}</div>
+            <div class="dato"><span>Color:</span> {{ resultado.color }}</div>
+            <div class="dato"><span>Número de Serie:</span> {{ resultado.numero_serie }}</div>
+            <div class="dato"><span>Número de Motor:</span> {{ resultado.numero_motor }}</div>
+            <div class="dato"><span>Fecha Expedición:</span> {{ resultado.fecha_expedicion }}</div>
+            <div class="dato"><span>Fecha Vencimiento:</span> {{ resultado.fecha_vencimiento }}</div>
+            <div class="footer">Permiso de Tránsito Municipal</div>
+        {% endif %}
     </div>
-    <div class="dato">
-        <strong>Fecha de Vencimiento:</strong>
-        {{ resultado.fecha_vencimiento }}
-    </div>
-    <div class="dato">
-        <strong>Marca:</strong>
-        {{ resultado.marca }}
-    </div>
-    <div class="dato">
-        <strong>Línea:</strong>
-        {{ resultado.linea }}
-    </div>
-    <div class="dato">
-        <strong>Año:</strong>
-        {{ resultado.año }}
-    </div>
-    <div class="dato">
-        <strong>Número de Serie:</strong>
-        {{ resultado.numero_serie }}
-    </div>
-    <div class="dato">
-        <strong>Número de Motor:</strong>
-        {{ resultado.numero_motor }}
-    </div>
-</div>
-{% endif %}
 
-<div class="valido">DOCUMENTO DIGITAL VÁLIDO EN TODO MÉXICO</div>
+    <div class="logos">
+        <img src="{{ url_for('static', filename='img/tlapa_logo.png') }}" alt="Tlapa Logo">
+        <img src="{{ url_for('static', filename='img/guerrero_icon.png') }}" alt="Gobierno Logo">
+    </div>
 
-<footer>
-    CONSULTA REALIZADA EN {{ resultado.fecha_consulta }}
-</footer>
+    <div class="ltm">
+        LTM | Tlapa de Comonfort Gro.
+    </div>
 
 </body>
 </html>
