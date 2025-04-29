@@ -5,81 +5,25 @@
     <title>Panel de Administración</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        body {
-            background-color: #ffffff;
-            font-family: 'Georgia', serif;
-            margin: 0;
-            padding: 0;
-            color: #003366;
-        }
-
-        header img, footer img {
-            width: 100%;
-            display: block;
-        }
-
-        .titulo {
-            text-align: center;
-            font-size: 26px;
-            margin: 30px 0 20px;
-            font-weight: bold;
-        }
-
-        .botones {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin: 30px auto;
-            flex-wrap: wrap;
-            max-width: 600px;
-        }
-
-        .btn {
-            background-color: #2a72a5;
-            color: white;
-            border: none;
-            padding: 14px 22px;
-            font-size: 16px;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-
-        .btn:hover {
-            background-color: #1e5b88;
-        }
-
-        @media (max-width: 600px) {
-            .titulo {
-                font-size: 22px;
-                margin-top: 20px;
-            }
-
-            .btn {
-                width: 100%;
-                text-align: center;
-            }
-        }
+      /* … tu CSS aquí … */
     </style>
 </head>
 <body>
+    <header>
+        <!-- img eliminado porque no existe -->
+    </header>
 
-<header>
-    <img src="{{ url_for('static', filename='Cabezaguana.jpg') }}" alt="Encabezado">
-</header>
+    <div class="titulo">Secretaría de Movilidad - Panel de Administración</div>
 
-<div class="titulo">Secretaría de Movilidad - Panel de Administración</div>
+    <div class="botones">
+        <a href="{{ url_for('registro_admin') }}"><button class="btn">Registrar Folio</button></a>
+        <a href="{{ url_for('consulta_folio') }}"><button class="btn">Consultar Folio</button></a>
+        <a href="{{ url_for('crear_usuario') }}"><button class="btn">Crear Usuario</button></a>
+        <a href="{{ url_for('logout') }}"><button class="btn">Cerrar Sesión</button></a>
+    </div>
 
-<div class="botones">
-    <a href="{{ url_for('registro_admin') }}"><button class="btn">Registrar Folio</button></a>
-    <a href="{{ url_for('consulta_folio') }}"><button class="btn">Consultar Folio</button></a>
-    <a href="{{ url_for('crear_usuario') }}"><button class="btn">Crear Usuario</button></a>
-    <a href="{{ url_for('logout') }}"><button class="btn">Cerrar Sesión</button></a>
-</div>
-
-<footer>
-    <img src="{{ url_for('static', filename='Piesguana.jpg') }}" alt="Pie de página">
-</footer>
-
+    <footer>
+        <!-- img eliminado porque no existe -->
+    </footer>
 </body>
 </html>
