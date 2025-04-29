@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session
+from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file
 from datetime import datetime, timedelta
 from supabase import create_client, Client
 import fitz  # PyMuPDF
@@ -10,6 +10,29 @@ app.secret_key = 'clave_muy_segura_123456'
 SUPABASE_URL = "https://xsagwqepoljfsogusubw.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzYWd3cWVwb2xqZnNvZ3VzdWJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM5NjM3NTUsImV4cCI6MjA1OTUzOTc1NX0.NUixULn0m2o49At8j6X58UqbXre2O2_JStqzls_8Gws"
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+PDF_FOLDER = 'static/pdfs'
+PLANTILLA_PDF = 'recibo_permiso_guerrero_img.pdf'
+
+def generar_pdf(folio, contribuyente, fecha_expedicion, fecha_vencimiento):
+    try:
+        ruta_pdf = os.path.join(PDF_FOLDER, f"{folio}.pdf")
+        os.makedirs(PDF_FOLDER, exist_ok=True)
+        doc = fitz.open(PLANTILLA_PDF)
+        page = doc[0]
+
+        # Coordenadas elegidas para que no se vea culero
+        page.insert_text((150, 480), f"{folio}", fontsize=12, fontname="helv", color=(0, 0, 0))
+        page.insert_text((150, 520), f"{contribuyente}", fontsize=12, fontname="helv", color=(0, 0, 0))
+        page.insert_text((150, 560), f"{fecha_expedicion.strftime('%d/%m/%Y')}", fontsize=12, fontname="helv", color=(0, 0, 0))
+        page.insert_text((150, 600), f"{fecha_vencimiento.strftime('%d/%m/%Y')}", fontsize=12, fontname="helv", color=(0, 0, 0))
+
+        doc.save(ruta_pdf)
+        doc.close()
+        return True
+    except Exception as e:
+        print(f"ERROR al generar PDF: {e}")
+        return False
 
 @app.route('/')
 def inicio():
@@ -69,22 +92,6 @@ def crear_usuario():
 
     return render_template('crear_usuario.html')
 
-def generar_pdf(folio, numero_serie, fecha_expedicion):
-    try:
-        plantilla = "guanajuato.pdf"
-        fecha_texto = fecha_expedicion.strftime("%d/%m/%Y")
-        ruta_pdf = f"static/pdfs/{folio}.pdf"
-        os.makedirs("static/pdfs", exist_ok=True)
-        doc = fitz.open(plantilla)
-        page = doc[0]
-        page.insert_text((259.0, 180.0), numero_serie, fontsize=10, fontname="helv")
-        page.insert_text((259.0, 396.0), fecha_texto, fontsize=10, fontname="helv")
-        doc.save(ruta_pdf)
-        return True
-    except Exception as e:
-        print(f"ERROR al generar PDF: {e}")
-        return False
-
 @app.route('/registro_usuario', methods=['GET', 'POST'])
 def registro_usuario():
     if 'user_id' not in session:
@@ -99,6 +106,7 @@ def registro_usuario():
         anio = request.form['anio']
         numero_serie = request.form['serie']
         numero_motor = request.form['motor']
+        contribuyente = request.form['contribuyente']
         vigencia = int(request.form['vigencia'])
 
         existente = supabase.table("folios_registrados").select("*").eq("folio", folio).execute()
@@ -127,6 +135,8 @@ def registro_usuario():
             "anio": anio,
             "numero_serie": numero_serie,
             "numero_motor": numero_motor,
+            "color": request.form['color'],
+            "contribuyente": contribuyente,
             "fecha_expedicion": fecha_expedicion.isoformat(),
             "fecha_vencimiento": fecha_vencimiento.isoformat()
         }
@@ -134,51 +144,12 @@ def registro_usuario():
         supabase.table("folios_registrados").insert(data).execute()
         supabase.table("verificaciondigitalcdmx").update({"folios_usados": folios["folios_usados"] + 1}).eq("id", user_id).execute()
 
-        generar_pdf(folio, numero_serie, fecha_expedicion)
+        generar_pdf(folio, contribuyente, fecha_expedicion, fecha_vencimiento)
         return render_template("exitoso.html", folio=folio)
 
     response = supabase.table("verificaciondigitalcdmx").select("folios_asignac, folios_usados").eq("id", user_id).execute()
     folios_info = response.data[0] if response.data else {}
     return render_template("registro_usuario.html", folios_info=folios_info)
-
-@app.route('/registro_admin', methods=['GET', 'POST'])
-def registro_admin():
-    if 'admin' not in session:
-        return redirect(url_for('login'))
-
-    if request.method == 'POST':
-        folio = request.form['folio']
-        marca = request.form['marca']
-        linea = request.form['linea']
-        anio = request.form['anio']
-        numero_serie = request.form['serie']
-        numero_motor = request.form['motor']
-        vigencia = int(request.form['vigencia'])
-
-        existente = supabase.table("folios_registrados").select("*").eq("folio", folio).execute()
-        if existente.data:
-            flash('Error: el folio ya existe.', 'error')
-            return render_template('registro_admin.html')
-
-        fecha_expedicion = datetime.now()
-        fecha_vencimiento = fecha_expedicion + timedelta(days=vigencia)
-
-        data = {
-            "folio": folio,
-            "marca": marca,
-            "linea": linea,
-            "anio": anio,
-            "numero_serie": numero_serie,
-            "numero_motor": numero_motor,
-            "fecha_expedicion": fecha_expedicion.isoformat(),
-            "fecha_vencimiento": fecha_vencimiento.isoformat()
-        }
-
-        supabase.table("folios_registrados").insert(data).execute()
-        generar_pdf(folio, numero_serie, fecha_expedicion)
-        return render_template("exitoso.html", folio=folio)
-
-    return render_template('registro_admin.html')
 
 @app.route('/consulta_folio', methods=['GET', 'POST'])
 def consulta_folio():
