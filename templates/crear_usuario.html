@@ -5,123 +5,35 @@
     <title>Crear Usuario</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        body {
-            background-color: #ffffff;
-            font-family: 'Georgia', serif;
-            margin: 0;
-            padding: 0;
-            color: #003366;
-        }
-
-        header img, footer img {
-            width: 100%;
-            display: block;
-        }
-
-        .titulo {
-            text-align: center;
-            font-size: 26px;
-            margin: 30px 0 20px;
-            font-weight: bold;
-        }
-
-        .formulario {
-            max-width: 600px;
-            margin: 20px auto;
-            padding: 25px 20px;
-            border-radius: 12px;
-            background-color: #e6f2fb;
-            border: 2px solid #cce6f5;
-        }
-
-        input {
-            width: 100%;
-            padding: 12px;
-            margin: 12px 0;
-            border-radius: 6px;
-            border: 1px solid #ccc;
-            font-size: 16px;
-        }
-
-        .btn, .nav-btn {
-            background-color: #2a72a5;
-            color: white;
-            border: none;
-            padding: 14px 22px;
-            font-size: 16px;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-            width: 100%;
-            margin-top: 15px;
-            text-align: center;
-            text-decoration: none;
-            display: block;
-        }
-
-        .btn:hover, .nav-btn:hover {
-            background-color: #1e5b88;
-        }
-
-        .mensaje {
-            margin: 20px auto;
-            max-width: 600px;
-            padding: 10px;
-            text-align: center;
-            font-weight: bold;
-            border-radius: 5px;
-        }
-
-        .success {
-            background-color: #4CAF50;
-            color: white;
-        }
-
-        .error {
-            background-color: #f44336;
-            color: white;
-        }
-
-        @media (max-width: 600px) {
-            .titulo {
-                font-size: 22px;
-                margin-top: 20px;
-            }
-        }
+      /* … tu CSS aquí … */
     </style>
 </head>
 <body>
+    <header></header> <!-- sin img -->
 
-<header>
-    <img src="{{ url_for('static', filename='Cabezaguana.jpg') }}" alt="Encabezado">
-</header>
+    <div class="titulo">Secretaría de Movilidad - Crear Usuario</div>
 
-<div class="titulo">Secretaría de Movilidad - Crear Usuario</div>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="mensaje {{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
 
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-    {% for category, message in messages %}
-      <div class="mensaje {{ category }}">{{ message }}</div>
-    {% endfor %}
-  {% endif %}
-{% endwith %}
+    <form method="POST" class="formulario" action="{{ url_for('crear_usuario') }}"> <!-- CAMBIO -->
+        <input type="text" name="username" placeholder="Nombre de usuario" required>
+        <input type="password" name="password" placeholder="Contraseña" required>
+        <input type="number" name="folios" placeholder="Cantidad de folios" required>
+        <button type="submit" class="btn">Crear Usuario</button>
+    </form>
 
-<form method="POST" class="formulario">
-    <input type="text" name="username" placeholder="Nombre de usuario" required>
-    <input type="password" name="password" placeholder="Contraseña" required>
-    <input type="number" name="folios" placeholder="Cantidad de folios" required>
-    <button type="submit" class="btn">Crear Usuario</button>
-</form>
+    <div class="nav">
+      <a href="{{ url_for('admin') }}" class="nav-btn">Volver al Panel</a>
+      <a href="{{ url_for('consulta_folio') }}" class="nav-btn">Consultar Folio</a>
+      <a href="{{ url_for('logout') }}" class="nav-btn">Cerrar Sesión</a>
+    </div>
 
-<div class="formulario">
-    <a href="{{ url_for('admin') }}" class="nav-btn">Volver al Panel</a>
-    <a href="{{ url_for('consulta_folio') }}" class="nav-btn">Consultar Folio</a>
-    <a href="{{ url_for('logout') }}" class="nav-btn">Cerrar Sesión</a>
-</div>
-
-<footer>
-    <img src="{{ url_for('static', filename='Piesguana.jpg') }}" alt="Pie de página">
-</footer>
-
+    <footer></footer>
 </body>
 </html>
