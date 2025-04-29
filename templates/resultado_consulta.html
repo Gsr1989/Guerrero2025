@@ -5,47 +5,39 @@
     <title>Resultado de Consulta</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-      /* … tu CSS aquí … */
+        body {
+            background-color: #ffffff;
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            text-align: center;
+        }
+        .resultado {
+            background-color: #eeeeee;
+            padding: 20px;
+            margin-top: 30px;
+            border-radius: 10px;
+            display: inline-block;
+            text-align: left;
+        }
+        h3 {
+            color: #003366;
+        }
     </style>
 </head>
 <body>
-    <header></header>
-
-    <div class="titulo">RESULTADO DE CONSULTA DIGITAL</div>
-
-    {% if resultado.estado == "No encontrado" %}
-        <div class="estado no-encontrado">
-            FOLIO {{ resultado.folio }} : NO SE ENCUENTRA REGISTRADO
-        </div>
-    {% elif resultado.estado == "VENCIDO" %}
-        <div class="estado vencido">
-            FOLIO {{ resultado.folio }} : VENCIDO
-        </div>
+    <h2>Resultado de la Consulta</h2>
+    {% if registro %}
+    <div class="resultado">
+        <h3>Folio: {{ registro.folio }}</h3>
+        <p>Nombre: {{ registro.nombre }}</p>
+        <p>Fecha de Expedición: {{ registro.fecha_expedicion }}</p>
+        <p>Fecha de Vencimiento: {{ registro.fecha_vencimiento }}</p>
+    </div>
     {% else %}
-        <div class="estado">
-            FOLIO {{ resultado.folio }} : VIGENTE
-        </div>
+    <p>No se encontró el folio.</p>
     {% endif %}
-
-    {% if resultado.estado != "No encontrado" %}
-    <div class="certificado">
-        <div class="dato">
-            <strong>Fecha de Expedición:</strong>
-            {{ resultado.fecha_expedicion }}
-        </div>
-        <div class="dato">
-            <strong>Fecha de Vencimiento:</strong>
-            {{ resultado.fecha_vencimiento }}
-        </div>
-    </div>
-    {% endif %}
-
-    <div class="valido">DOCUMENTO DIGITAL VÁLIDO EN TODO MÉXICO</div>
-
-    <div class="btn-regresar">
-        <a href="{{ url_for('consulta_folio') }}">Regresar</a>
-    </div>
-
-    <footer></footer>
+    <br>
+    <a href="/consulta">Consultar otro</a> |
+    <a href="/">Volver al inicio</a>
 </body>
 </html>
