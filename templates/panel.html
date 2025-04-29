@@ -2,28 +2,46 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Panel de Administración</title>
+    <title>Panel Principal</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-      /* … tu CSS aquí … */
+        body {
+            font-family: Arial, sans-serif;
+            background: #ffffff;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+        }
+        h1 {
+            margin-top: 40px;
+            color: #003366;
+        }
+        .botones {
+            margin-top: 50px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            align-items: center;
+        }
+        a {
+            text-decoration: none;
+            background: #003366;
+            color: white;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 18px;
+            width: 250px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
-    <header>
-        <!-- img eliminado porque no existe -->
-    </header>
-
-    <div class="titulo">Secretaría de Movilidad - Panel de Administración</div>
-
+    <h1>Bienvenido al Panel</h1>
     <div class="botones">
-        <a href="{{ url_for('registro_admin') }}"><button class="btn">Registrar Folio</button></a>
-        <a href="{{ url_for('consulta_folio') }}"><button class="btn">Consultar Folio</button></a>
-        <a href="{{ url_for('crear_usuario') }}"><button class="btn">Crear Usuario</button></a>
-        <a href="{{ url_for('logout') }}"><button class="btn">Cerrar Sesión</button></a>
+        <a href="/registro">Registrar Folio</a>
+        <a href="/admin_folios">Administrar Folios</a>
+        <a href="/consulta">Consultar Folio</a>
+        <a href="/logout">Cerrar Sesión</a>
     </div>
-
-    <footer>
-        <!-- img eliminado porque no existe -->
-    </footer>
 </body>
 </html>
