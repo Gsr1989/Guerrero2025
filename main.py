@@ -1,26 +1,25 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file
+from flask import Flask, render_template, request, redirect, url_for, flash, session
 from datetime import datetime, timedelta
 from supabase import create_client, Client
-import os
 import fitz  # PyMuPDF
 import qrcode
+import os
 
 app = Flask(__name__)
 app.secret_key = 'clave_muy_segura_123456'
 
-SUPABASE_URL = "https://xsagwqepoljfsogusubw.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+SUPABASE_URL = "https://iuwsippnvyynwnxanwnv.supabase.co"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml1d3NpcHBudnl5bndueGFud252Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU2NDU3MDcsImV4cCI6MjA2MTIyMTcwN30.bm7J6b3k_F0JxPFFRTklBDOgHRJTvEa1s-uwvSwVxTs"
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 OUTPUT_DIR = 'static/pdfs'
-PLANTILLA_PDF = 'Recibo_Permiso_Guerrero.pdf'
-FOLIO_FILE = 'folio_actual.txt'
+TEMPLATE_FILE = 'recibo_permiso_guerrero_img.pdf'
 
 def cargar_folio():
-    if not os.path.exists(FOLIO_FILE):
-        with open(FOLIO_FILE, 'w') as f:
-            f.write('AC0000')
-    with open(FOLIO_FILE, 'r') as f:
+    if not os.path.exists('folio_actual.txt'):
+        with open('folio_actual.txt', 'w') as f:
+            f.write('AC0001')
+    with open('folio_actual.txt', 'r') as f:
         return f.read().strip()
 
 def siguiente_folio(folio_actual):
@@ -32,112 +31,107 @@ def siguiente_folio(folio_actual):
         letras = incrementar_letras(letras)
         numeros = 1
     nuevo_folio = f"{letras}{numeros:04d}"
-    with open(FOLIO_FILE, 'w') as f:
+    with open('folio_actual.txt', 'w') as f:
         f.write(nuevo_folio)
     return nuevo_folio
 
 def incrementar_letras(letras):
-    l1, l2 = letras
-    if l2 != 'Z':
-        l2 = chr(ord(l2) + 1)
+    letra1, letra2 = letras
+    if letra2 != 'Z':
+        letra2 = chr(ord(letra2) + 1)
     else:
-        l2 = 'A'
-        if l1 != 'Z':
-            l1 = chr(ord(l1) + 1)
+        letra2 = 'A'
+        if letra1 != 'Z':
+            letra1 = chr(ord(letra1) + 1)
         else:
-            l1 = 'A'
-    return l1 + l2
+            letra1 = 'A'
+    return letra1 + letra2
 
-def generar_pdf_con_qr(folio, contribuyente, fecha_expedicion, fecha_vencimiento, marca, linea, anio, serie, motor, color):
+def generar_pdf(folio, contribuyente, fecha_expedicion, fecha_vencimiento, qr_data):
     if not os.path.exists(OUTPUT_DIR):
         os.makedirs(OUTPUT_DIR)
 
-    doc = fitz.open(PLANTILLA_PDF)
+    doc = fitz.open(TEMPLATE_FILE)
     page = doc[0]
 
-    page.insert_text((250, 270), f"{fecha_expedicion}", fontsize=12)
-    page.insert_text((250, 305), f"{fecha_vencimiento}", fontsize=12)
-    page.insert_text((250, 340), f"{folio}", fontsize=12)
-    page.insert_text((250, 375), f"{contribuyente}", fontsize=12)
+    page.insert_text((320, 300), fecha_expedicion.strftime("%d/%m/%Y"), fontsize=14)
+    page.insert_text((320, 340), fecha_vencimiento.strftime("%d/%m/%Y"), fontsize=14)
+    page.insert_text((320, 380), folio, fontsize=14)
+    page.insert_text((320, 420), contribuyente, fontsize=14)
 
-    datos_qr = (
-        f"[PERMISO-AUTÉNTICO] [MUNICIPIO-TLAPA DE COMONFORT-GRO]\n"
-        f"FOLIO: {folio}\n"
-        f"CONTRIBUYENTE: {contribuyente}\n"
-        f"MARCA: {marca}\n"
-        f"LÍNEA: {linea}\n"
-        f"AÑO: {anio}\n"
-        f"SERIE: {serie}\n"
-        f"MOTOR: {motor}\n"
-        f"COLOR: {color}\n"
-        f"VIGENCIA: {fecha_expedicion} AL {fecha_vencimiento}"
-    )
-    qr = qrcode.make(datos_qr)
+    qr = qrcode.make(qr_data)
     qr_path = os.path.join(OUTPUT_DIR, f"{folio}_qr.png")
     qr.save(qr_path)
+    qr_image = fitz.Pixmap(qr_path)
+    page.insert_image((60, 600, 260, 800), pixmap=qr_image)
 
-    rect = fitz.Rect(70, 450, 220, 600)
-    page.insert_image(rect, filename=qr_path)
-
-    pdf_path = os.path.join(OUTPUT_DIR, f"{folio}.pdf")
-    doc.save(pdf_path)
+    pdf_output = os.path.join(OUTPUT_DIR, f"{folio}.pdf")
+    doc.save(pdf_output)
     doc.close()
+    os.remove(qr_path)
+
+def construir_qr_texto(folio, contribuyente, fecha_expedicion, fecha_vencimiento, marca, linea, anio, serie, motor, color):
+    return (
+        f"[PERMISO-AUTÉNTICO]\n"
+        f"[MUNICIPIO-TLAPA DE COMONFORT-GRO]\n"
+        f"Folio: {folio}\n"
+        f"Contribuyente: {contribuyente}\n"
+        f"Fecha Expedición: {fecha_expedicion.strftime('%d/%m/%Y')}\n"
+        f"Fecha Vencimiento: {fecha_vencimiento.strftime('%d/%m/%Y')}\n"
+        f"Marca: {marca}\n"
+        f"Línea: {linea}\n"
+        f"Año: {anio}\n"
+        f"Número de Serie: {serie}\n"
+        f"Número de Motor: {motor}\n"
+        f"Color: {color}"
+    )
 
 @app.route('/')
-def inicio():
-    return redirect(url_for('formulario'))
-
-@app.route('/formulario', methods=['GET', 'POST'])
 def formulario():
-    if request.method == 'POST':
-        folio_actual = cargar_folio()
-        folio_generado = siguiente_folio(folio_actual)
-
-        marca = request.form['marca']
-        linea = request.form['linea']
-        anio = request.form['anio']
-        serie = request.form['serie']
-        motor = request.form['motor']
-        color = request.form['color']
-        contribuyente = request.form['contribuyente']
-
-        fecha_expedicion = datetime.now().strftime("%d/%m/%Y")
-        fecha_vencimiento = (datetime.now() + timedelta(days=30)).strftime("%d/%m/%Y")
-
-        data = {
-            "folio": folio_generado,
-            "marca": marca,
-            "linea": linea,
-            "anio": anio,
-            "numero_serie": serie,
-            "numero_motor": motor,
-            "color": color,
-            "nombre_contribuyente": contribuyente,
-            "fecha_expedicion": fecha_expedicion,
-            "fecha_vencimiento": fecha_vencimiento
-        }
-
-        supabase.table("permisos_guerrero").insert(data).execute()
-        generar_pdf_con_qr(folio_generado, contribuyente, fecha_expedicion, fecha_vencimiento, marca, linea, anio, serie, motor, color)
-
-        return redirect(url_for('exito', folio=folio_generado))
-
     return render_template('registro_folio.html')
 
-@app.route('/exito/<folio>')
-def exito(folio):
-    return render_template('exitoso.html', folio=folio)
+@app.route('/registrar', methods=['POST'])
+def registrar():
+    marca = request.form['marca'].upper()
+    linea = request.form['linea'].upper()
+    anio = request.form['anio'].upper()
+    serie = request.form['serie'].upper()
+    motor = request.form['motor'].upper()
+    color = request.form['color'].upper()
+    contribuyente = request.form['contribuyente'].upper()
+    vigencia_dias = int(request.form['vigencia'])
 
-@app.route('/descargar/<folio>')
-def descargar(folio):
-    path = os.path.join(OUTPUT_DIR, f"{folio}.pdf")
-    return send_file(path, as_attachment=True)
+    folio_actual = cargar_folio()
+    folio_generado = siguiente_folio(folio_actual)
+
+    fecha_expedicion = datetime.now()
+    fecha_vencimiento = fecha_expedicion + timedelta(days=vigencia_dias)
+
+    data = {
+        "folio": folio_generado,
+        "marca": marca,
+        "linea": linea,
+        "anio": anio,
+        "serie": serie,
+        "motor": motor,
+        "color": color,
+        "contribuyente": contribuyente,
+        "fecha_expedicion": fecha_expedicion.isoformat(),
+        "fecha_vencimiento": fecha_vencimiento.isoformat(),
+    }
+
+    supabase.table("permisos_guerrero").insert(data).execute()
+
+    qr_texto = construir_qr_texto(folio_generado, contribuyente, fecha_expedicion, fecha_vencimiento, marca, linea, anio, serie, motor, color)
+    generar_pdf(folio_generado, contribuyente, fecha_expedicion, fecha_vencimiento, qr_texto)
+
+    return render_template('exitoso.html', folio=folio_generado)
 
 @app.route('/consulta_folio', methods=['GET', 'POST'])
 def consulta_folio():
     resultado = None
     if request.method == 'POST':
-        folio = request.form['folio'].strip().upper()
+        folio = request.form['folio'].upper()
         response = supabase.table("permisos_guerrero").select("*").eq("folio", folio).execute()
         registros = response.data
 
@@ -145,23 +139,25 @@ def consulta_folio():
             resultado = {"estado": "No encontrado", "folio": folio}
         else:
             registro = registros[0]
-            fecha_exp = datetime.strptime(registro['fecha_expedicion'], "%d/%m/%Y")
-            fecha_ven = datetime.strptime(registro['fecha_vencimiento'], "%d/%m/%Y")
-            estado = "VIGENTE" if datetime.now() <= fecha_ven else "VENCIDO"
+            fecha_expedicion = datetime.fromisoformat(registro['fecha_expedicion'])
+            fecha_vencimiento = datetime.fromisoformat(registro['fecha_vencimiento'])
+            hoy = datetime.now()
+            estado = "VIGENTE" if hoy <= fecha_vencimiento else "VENCIDO"
 
             resultado = {
                 "estado": estado,
                 "folio": folio,
-                "fecha_expedicion": registro['fecha_expedicion'],
-                "fecha_vencimiento": registro['fecha_vencimiento'],
+                "fecha_expedicion": fecha_expedicion.strftime("%d/%m/%Y"),
+                "fecha_vencimiento": fecha_vencimiento.strftime("%d/%m/%Y"),
                 "marca": registro['marca'],
                 "linea": registro['linea'],
-                "anio": registro['anio'],
-                "numero_serie": registro['numero_serie'],
-                "numero_motor": registro['numero_motor'],
+                "año": registro['anio'],
+                "numero_serie": registro['serie'],
+                "numero_motor": registro['motor'],
                 "color": registro['color'],
-                "nombre_contribuyente": registro['nombre_contribuyente']
+                "contribuyente": registro['contribuyente'],
             }
+
         return render_template("resultado_consulta.html", resultado=resultado)
 
     return render_template("consulta_folio.html")
