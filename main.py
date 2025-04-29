@@ -7,7 +7,7 @@ import os
 app = Flask(__name__)
 app.secret_key = 'clave_muy_segura_123456'
 
-# Conexión a Supabase (NO TOCADA)
+# Supabase config
 SUPABASE_URL = "https://xsagwqepoljfsogusubw.supabase.co"
 SUPABASE_KEY = (
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."
@@ -21,7 +21,6 @@ OUTPUT_DIR = "static/pdfs"
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
 
-# LOGIN
 @app.route('/', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -34,14 +33,12 @@ def login():
             flash('Usuario o contraseña incorrectos')
     return render_template('login.html')
 
-# PANEL PRINCIPAL
 @app.route('/panel')
 def panel():
     if 'usuario' not in session:
         return redirect(url_for('login'))
     return render_template('panel.html')
 
-# REGISTRO DE FOLIOS
 @app.route('/registro', methods=['GET', 'POST'])
 def registro():
     if 'usuario' not in session:
@@ -51,7 +48,7 @@ def registro():
         folio = request.form['folio']
         marca = request.form['marca']
         linea = request.form['linea']
-        año = request.form['anio']
+        anio = request.form['anio']
         serie = request.form['serie']
         motor = request.form['motor']
         color = request.form['color']
@@ -61,12 +58,11 @@ def registro():
         fecha_expedicion = datetime.now().strftime('%d/%m/%Y')
         fecha_vencimiento = (datetime.now() + timedelta(days=vigencia)).strftime('%d/%m/%Y')
 
-        # Insertar en Supabase
         data = {
             "folio": folio,
             "marca": marca,
             "linea": linea,
-            "año": año,
+            "anio": anio,
             "serie": serie,
             "motor": motor,
             "color": color,
@@ -77,7 +73,6 @@ def registro():
         }
         supabase.table('folios_registrados').insert(data).execute()
 
-        # Generar PDF
         plantilla_path = 'static/recibo_permiso_guerrero_img.pdf'
         output_path = os.path.join(OUTPUT_DIR, f"{folio}.pdf")
         generar_pdf(plantilla_path, output_path, folio, nombre, fecha_expedicion, fecha_vencimiento)
@@ -86,21 +81,18 @@ def registro():
 
     return render_template('registro_admin.html')
 
-# GENERAR PDF
 def generar_pdf(plantilla_path, output_path, folio, nombre, fecha_expedicion, fecha_vencimiento):
     doc = fitz.open(plantilla_path)
     page = doc[0]
 
-    # Imprimir datos
-    page.insert_text((100, 150), f"FOLIO: {folio}", fontsize=14, color=(1, 0, 0))  # Rojo
-    page.insert_text((100, 180), f"NOMBRE: {nombre}", fontsize=12, color=(0, 0, 0))  # Negro
-    page.insert_text((100, 210), f"EXPEDICIÓN: {fecha_expedicion}", fontsize=12, color=(0, 0, 0))  # Negro
-    page.insert_text((100, 240), f"VENCIMIENTO: {fecha_vencimiento}", fontsize=12, color=(0, 0, 0))  # Negro
+    page.insert_text((100, 150), f"FOLIO: {folio}", fontsize=14, color=(1, 0, 0))
+    page.insert_text((100, 180), f"NOMBRE: {nombre}", fontsize=12, color=(0, 0, 0))
+    page.insert_text((100, 210), f"EXPEDICIÓN: {fecha_expedicion}", fontsize=12, color=(0, 0, 0))
+    page.insert_text((100, 240), f"VENCIMIENTO: {fecha_vencimiento}", fontsize=12, color=(0, 0, 0))
 
     doc.save(output_path)
     doc.close()
 
-# VER TODOS LOS FOLIOS
 @app.route('/admin_folios')
 def admin_folios():
     if 'usuario' not in session:
@@ -110,7 +102,6 @@ def admin_folios():
     registros = data.data
     return render_template('admin_folios.html', registros=registros)
 
-# EDITAR FOLIO
 @app.route('/editar_folio/<folio>', methods=['GET', 'POST'])
 def editar_folio(folio):
     if 'usuario' not in session:
@@ -120,7 +111,7 @@ def editar_folio(folio):
         nuevos_datos = {
             "marca": request.form['marca'],
             "linea": request.form['linea'],
-            "año": request.form['anio'],
+            "anio": request.form['anio'],
             "serie": request.form['serie'],
             "motor": request.form['motor'],
             "color": request.form['color'],
@@ -137,7 +128,6 @@ def editar_folio(folio):
     registro = data.data[0] if data.data else None
     return render_template('editar_folio.html', registro=registro)
 
-# ELIMINAR FOLIO
 @app.route('/eliminar_folio/<folio>')
 def eliminar_folio(folio):
     if 'usuario' not in session:
@@ -147,7 +137,6 @@ def eliminar_folio(folio):
     flash('Folio eliminado exitosamente')
     return redirect(url_for('admin_folios'))
 
-# CONSULTAR FOLIO (PÚBLICO)
 @app.route('/consulta', methods=['GET', 'POST'])
 def consulta():
     if request.method == 'POST':
@@ -164,7 +153,6 @@ def consulta():
 
     return render_template('consulta_folio.html')
 
-# DESCARGAR PDF
 @app.route('/descargar/<folio>')
 def descargar(folio):
     if 'usuario' not in session:
@@ -177,13 +165,11 @@ def descargar(folio):
         flash('Archivo no encontrado')
         return redirect(url_for('panel'))
 
-# CERRAR SESIÓN
 @app.route('/logout')
 def logout():
     session.pop('usuario', None)
     return redirect(url_for('login'))
 
-# PÁGINA DE REGISTRO EXITOSO
 @app.route('/exitoso')
 def exitoso():
     if 'usuario' not in session:
