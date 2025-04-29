@@ -27,13 +27,11 @@ def registro_folio():
         color = request.form['color']
         contribuyente = request.form['contribuyente']
 
-        # Calcular fechas
         fecha_expedicion = datetime.now()
         fecha_vencimiento = fecha_expedicion + timedelta(days=90)
         fecha_expedicion_str = fecha_expedicion.strftime('%Y-%m-%d')
         fecha_vencimiento_str = fecha_vencimiento.strftime('%Y-%m-%d')
 
-        # Insertar en Supabase
         data = {
             'folio': folio,
             'marca': marca,
@@ -53,7 +51,6 @@ def registro_folio():
         except Exception as e:
             return f"Error al guardar en Supabase: {e}"
 
-        # Generar QR
         url_qr = f"https://tlapadecomonfortexpediciondepermisosgob2.onrender.com/consulta/{folio}"
         qr_img = qrcode.make(url_qr)
         buffer = io.BytesIO()
