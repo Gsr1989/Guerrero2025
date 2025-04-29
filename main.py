@@ -63,6 +63,12 @@ def generar_pdf(folio, fecha_expedicion, vigencia): try: plantilla = "recibo_per
 @app.route('/registro_usuario', methods=['GET', 'POST']) def registro_usuario(): if 'user_id' not in session: return redirect(url_for('login'))
 
 user_id = session['user_id']
+response = (supabase
+            .table("verificaciondigitalcdmx")
+            .select("folios_asignac, folios_usados")
+            .eq("id", user_id)
+            .execute())
+folios_info = response.data[0] if response.data else {}
 
 if request.method == 'POST':
     folio = request.form['folio']
@@ -82,24 +88,13 @@ if request.method == 'POST':
         flash('Error: el folio ya existe.', 'error')
         return redirect(url_for('registro_usuario'))
 
-    usuario_data = (supabase
-                    .table("verificaciondigitalcdmx")
-                    .select("folios_asignac, folios_usados")
-                    .eq("id", user_id)
-                    .execute())
-    if not usuario_data.data:
-        flash("No se pudo obtener la información del usuario.", "error")
-        return redirect(url_for('registro_usuario'))
-
-    folios = usuario_data.data[0]
-    restantes = folios['folios_asignac'] - folios['folios_usados']
+    restantes = folios_info['folios_asignac'] - folios_info['folios_usados']
     if restantes <= 0:
         flash("No tienes folios disponibles para registrar.", "error")
         return redirect(url_for('registro_usuario'))
 
     fecha_expedicion = datetime.now()
     fecha_vencimiento = fecha_expedicion + timedelta(days=vigencia)
-
     data = {
         "folio": folio,
         "marca": marca,
@@ -112,20 +107,12 @@ if request.method == 'POST':
     }
     supabase.table("folios_registrados").insert(data).execute()
     supabase.table("verificaciondigitalcdmx")
-           .update({"folios_usados": folios["folios_usados"] + 1})
+           .update({"folios_usados": folios_info["folios_usados"] + 1})
            .eq("id", user_id).execute()
 
     generar_pdf(folio, fecha_expedicion, vigencia)
     return render_template("exitoso.html", folio=folio)
 
-folios_info = {}
-response = (supabase
-            .table("verificaciondigitalcdmx")
-            .select("folios_asignac, folios_usados")
-            .eq("id", session.get('user_id'))
-            .execute())
-if response.data:
-    folios_info = response.data[0]
 return render_template("registro_usuario.html", folios_info=folios_info)
 
 @app.route('/registro_admin', methods=['GET', 'POST']) def registro_admin(): if 'admin' not in session: return redirect(url_for('login'))
@@ -150,7 +137,6 @@ if request.method == 'POST':
 
     fecha_expedicion = datetime.now()
     fecha_vencimiento = fecha_expedicion + timedelta(days=vigencia)
-
     data = {
         "folio": folio,
         "marca": marca,
@@ -164,6 +150,7 @@ if request.method == 'POST':
     supabase.table("folios_registrados").insert(data).execute()
     generar_pdf(folio, fecha_expedicion, vigencia)
     return render_template("exitoso.html", folio=folio)
+
 return render_template('registro_admin.html')
 
 @app.route('/consulta_folio', methods=['GET', 'POST']) def consulta_folio(): resultado = None if request.method == 'POST': folio = request.form['folio'] response = (supabase .table("folios_registrados") .select("*") .eq("folio", folio) .execute()) registros = response.data
@@ -173,18 +160,5 @@ if not registros:
     else:
         registro = registros[0]
         fecha_expedicion = datetime.fromisoformat(registro['fecha_expedicion'])
-        fecha_vencimiento = datetime.fromisoformat(registro['fecha_vencimiento'])
-        estado = "VIGENTE" if datetime.now() <= fecha_vencimiento else "VENCIDO"
-        resultado = {
-            "estado": estado,
-            "folio": folio,
-            "fecha_expedicion": fecha_expedicion.strftime("%d/%m/%Y"),
-            "fecha_vencimiento": fecha_vencimiento.strftime("%d/%m/%Y")
-        }
-    return render_template("resultado_consulta.html", resultado=resultado)
-return render_template("consulta_folio.html")
-
-@app.route('/logout') def logout(): session.clear() return redirect(url_for('login'))
-
-if name == 'main': app.run(debug=True)
+        fecha_vencimiento = datetime.fromisoformat(registro['fecha_vencimi```
 
