@@ -28,27 +28,20 @@ def generar_qr(data_dict):
 
 def generar_pdf(datos):
     os.makedirs(PDF_FOLDER, exist_ok=True)
-    ruta_pdf = os.path.join(PDF_FOLDER, f"{datos['folio']}.pdf")
+    output_path = os.path.join(PDF_FOLDER, f"{datos['folio']}.pdf")
     doc = fitz.open(TEMPLATE_PDF)
     page = doc[0]
 
-    # COORDENADAS (ajusta si hace falta)
-    page.insert_text((87, 662), datos['folio'], fontsize=12, color=(1, 0, 0))  # Rojo
-    page.insert_text((147, 650), datos['fecha_expedicion'], fontsize=12)
-    page.insert_text((97, 365), datos['marca'], fontsize=12)
-    page.insert_text((455, 365), datos['serie'], fontsize=12)
-    page.insert_text((97, 358), datos['linea'], fontsize=12)
-    page.insert_text((430, 358), datos['motor'], fontsize=12)
-    page.insert_text((97, 333), datos['anio'], fontsize=12)
-    page.insert_text((455, 333), datos['vigencia'] + " días", fontsize=12)
-    page.insert_text((451, 326), datos['contribuyente'], fontsize=8)
+    page.insert_text((135, 525), datos['folio'], fontsize=10)
+    page.insert_text((135, 565), datos['contribuyente'], fontsize=10)
+    page.insert_text((135, 605), datos['fecha_expedicion'], fontsize=10)
+    page.insert_text((135, 645), datos['fecha_vencimiento'], fontsize=10)
 
-    # QR
     qr_img = generar_qr(datos)
     qr_pix = fitz.Pixmap(fitz.csRGB, fitz.open("png", qr_img).get_page_pixmap(0))
-    page.insert_image(fitz.Rect(75, 695, 195, 815), pixmap=qr_pix)
+    page.insert_image(fitz.Rect(135, 685, 285, 835), pixmap=qr_pix)
 
-    doc.save(ruta_pdf)
+    doc.save(output_path)
     doc.close()
 
 @app.route('/', methods=['GET', 'POST'])
@@ -67,8 +60,8 @@ def formulario():
             "motor": request.form['motor'].upper(),
             "color": request.form['color'].upper(),
             "contribuyente": request.form['contribuyente'].upper(),
-            "fecha_expedicion": fecha_expedicion.strftime("%d/%m/%Y"),
-            "fecha_vencimiento": fecha_vencimiento.strftime("%d/%m/%Y"),
+            "fecha_expedicion": fecha_expedicion.strftime("%Y-%m-%d"),  # CORREGIDO
+            "fecha_vencimiento": fecha_vencimiento.strftime("%Y-%m-%d"),  # CORREGIDO
             "vigencia": request.form['vigencia']
         }
 
@@ -78,13 +71,9 @@ def formulario():
             return f"Error al guardar en Supabase: {e}"
 
         generar_pdf(datos)
-        return redirect(url_for('exito', folio=folio))
+        return render_template("exitoso.html", folio=folio)
 
     return render_template("registro_folio.html")
-
-@app.route('/exito/<folio>')
-def exito(folio):
-    return render_template("exitoso.html", folio=folio)
 
 @app.route('/descargar/<folio>')
 def descargar(folio):
@@ -92,7 +81,36 @@ def descargar(folio):
     if os.path.exists(ruta):
         return send_file(ruta, as_attachment=True)
     else:
-        return "Archivo no encontrado", 404
+        flash("Archivo no encontrado.", "error")
+        return redirect(url_for('formulario'))
+
+@app.route('/consulta_folio', methods=['GET', 'POST'])
+def consulta():
+    resultado = None
+    if request.method == 'POST':
+        folio = request.form['folio'].upper()
+        datos = supabase.table("permisos_guerrero").select("*").eq("folio", folio).execute()
+        if not datos.data:
+            resultado = {"estado": "No encontrado", "folio": folio}
+        else:
+            registro = datos.data[0]
+            hoy = datetime.now()
+            vencimiento = datetime.strptime(registro['fecha_vencimiento'], "%Y-%m-%d")
+            estado = "VIGENTE" if hoy <= vencimiento else "VENCIDO"
+            resultado = {
+                "estado": estado,
+                "folio": registro['folio'],
+                "fecha_expedicion": registro['fecha_expedicion'],
+                "fecha_vencimiento": registro['fecha_vencimiento'],
+                "marca": registro['marca'],
+                "linea": registro['linea'],
+                "año": registro['anio'],
+                "color": registro['color'],
+                "numero_serie": registro['serie'],
+                "numero_motor": registro['motor']
+            }
+
+    return render_template("resultado_consulta.html", resultado=resultado)
 
 if __name__ == '__main__':
     app.run(debug=True)
