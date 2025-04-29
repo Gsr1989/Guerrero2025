@@ -63,7 +63,6 @@ def registro():
             "anio": anio,
             "numero_serie": numero_serie,
             "numero_motor": numero_motor,
-            "nombre": nombre,
             "vigencia": vigencia,
             "fecha_expedicion": fecha_expedicion.isoformat(),
             "fecha_vencimiento": fecha_vencimiento.isoformat()
