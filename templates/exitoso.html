@@ -5,21 +5,41 @@
     <title>Registro Exitoso</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-      /* … tu CSS aquí … */
+        body {
+            background: #f9f9f9;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 40px;
+        }
+        .exito {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            display: inline-block;
+            box-shadow: 0px 0px 10px gray;
+        }
+        h2 {
+            color: #28a745;
+        }
+        a {
+            display: inline-block;
+            margin: 15px;
+            padding: 12px 20px;
+            background: #003366;
+            color: white;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 16px;
+        }
     </style>
 </head>
 <body>
-    <header></header>
-
-    <div class="titulo">Secretaría de Movilidad - Registro Exitoso</div>
-
-    <div class="contenido">
-        <p class="mensaje">Folio registrado correctamente.</p>
-        <a class="boton" href="{{ url_for('static', filename='pdfs/' + folio + '.pdf') }}" download>Descargar Comprobante PDF</a>
-        <a class="boton" href="{{ url_for('consulta_folio') }}">Consultar Folio</a>
-        <a class="boton" href="{{ url_for('admin') }}">Volver al Panel</a>
+    <div class="exito">
+        <h2>¡Registro Exitoso!</h2>
+        <p>Folio registrado: <strong>{{ folio }}</strong></p>
+        <br>
+        <a href="/panel">Volver al Panel</a>
+        <a href="/descargar/{{ folio }}">Descargar PDF</a>
     </div>
-
-    <footer></footer>
 </body>
 </html>
