@@ -6,91 +6,113 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         body {
+            background-color: #ffffff;
+            font-family: 'Georgia', serif;
             margin: 0;
             padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-image: url("{{ url_for('static', filename='img/fondo_grecas.png') }}");
-            background-size: cover;
-            background-repeat: repeat;
-        }
-
-        header {
-            text-align: center;
-            padding: 10px 0;
         }
 
         header img {
-            width: 75%;
+            width: 100%;
+            display: block;
         }
 
-        .container {
-            max-width: 500px;
-            margin: 20px auto;
-            background-color: #f7fbff;
-            border-radius: 10px;
-            padding: 20px;
-            border: 2px solid #87CEFA;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        .titulo {
+            text-align: center;
+            font-size: 26px;
+            margin-top: 20px;
+            font-weight: bold;
+            color: #003366;
         }
 
         .estado {
-            background-color: #1e90ff;
-            color: white;
-            padding: 10px;
-            border-radius: 6px 6px 0 0;
-            font-weight: bold;
             text-align: center;
-            font-size: 18px;
+            font-size: 22px;
+            font-weight: bold;
+            margin-top: 30px;
+            padding: 15px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            background-color: #003366;
+            color: white;
+        }
+
+        .vencido {
+            background-color: #b38b00 !important;
+        }
+
+        .no-encontrado {
+            background-color: #a00000 !important;
+        }
+
+        .certificado {
+            border: 2px solid #cce6f5;
+            padding: 30px 20px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 600px;
+            margin: 30px auto;
+            background-color: #e6f2fb;
+            color: #003366;
         }
 
         .dato {
-            margin: 10px 0;
+            margin-bottom: 25px;
             font-size: 16px;
+            text-align: left;
         }
 
-        .dato span {
-            font-weight: bold;
+        .dato strong {
+            display: block;
+            font-size: 15px;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        .footer {
-            background-color: #e0e0e0;
-            padding: 10px;
+        .valido {
             text-align: center;
             font-weight: bold;
-            border-radius: 0 0 6px 6px;
-            font-size: 14px;
-        }
-
-        .logos {
-            text-align: center;
             margin-top: 20px;
+            color: #003366;
         }
 
-        .logos img {
-            height: 80px;
-            margin: 0 15px;
-        }
-
-        .ltm {
+        .btn-regresar {
+            display: block;
+            width: 90%;
+            max-width: 600px;
+            margin: 30px auto;
             text-align: center;
-            font-size: 35px;
-            font-weight: normal;
-            color: #000;
-            margin-top: 10px;
-            padding-bottom: 30px;
+        }
+
+        .btn-regresar a {
+            background-color: #2a72a5;
+            color: white;
+            text-decoration: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 16px;
+            display: inline-block;
+        }
+
+        .btn-regresar a:hover {
+            background-color: #1e5b88;
+        }
+
+        footer img {
+            width: 100%;
+            display: block;
         }
 
         @media (max-width: 600px) {
-            .container {
-                width: 90%;
+            .titulo {
+                font-size: 22px;
             }
-
-            .logos img {
-                height: 70px;
-            }
-
-            .ltm {
-                font-size: 30px;
+            .estado {
+                font-size: 20px;
             }
         }
     </style>
@@ -98,45 +120,67 @@
 <body>
 
     <header>
-        <img src="{{ url_for('static', filename='img/guerrero_logo.png') }}" alt="Encabezado Guerrero">
+        <img src="{{ url_for('static', filename='Cabezaguana.jpg') }}" alt="Encabezado">
     </header>
 
-    <div class="container">
-        {% if resultado.estado == "No encontrado" %}
-            <div class="estado" style="background-color: #a00000;">
-                FOLIO {{ resultado.folio }} : NO SE ENCUENTRA REGISTRADO
-            </div>
-        {% elif resultado.estado == "VENCIDO" %}
-            <div class="estado" style="background-color: #b38b00;">
-                FOLIO {{ resultado.folio }} : VENCIDO
-            </div>
-        {% else %}
-            <div class="estado">
-                FOLIO {{ resultado.folio }} : VIGENTE
-            </div>
-        {% endif %}
+    <div class="titulo">RESULTADO DE CONSULTA DIGITAL</div>
 
-        {% if resultado.estado != "No encontrado" %}
-            <div class="dato"><span>Marca:</span> {{ resultado.marca }}</div>
-            <div class="dato"><span>Línea:</span> {{ resultado.linea }}</div>
-            <div class="dato"><span>Modelo:</span> {{ resultado.año }}</div>
-            <div class="dato"><span>Color:</span> {{ resultado.color }}</div>
-            <div class="dato"><span>Número de Serie:</span> {{ resultado.numero_serie }}</div>
-            <div class="dato"><span>Número de Motor:</span> {{ resultado.numero_motor }}</div>
-            <div class="dato"><span>Fecha Expedición:</span> {{ resultado.fecha_expedicion }}</div>
-            <div class="dato"><span>Fecha Vencimiento:</span> {{ resultado.fecha_vencimiento }}</div>
-            <div class="footer">Permiso de Tránsito Municipal</div>
-        {% endif %}
+    {% if resultado.estado == "No encontrado" %}
+        <div class="estado no-encontrado">
+            FOLIO {{ resultado.folio }} : NO SE ENCUENTRA REGISTRADO
+        </div>
+    {% elif resultado.estado == "VENCIDO" %}
+        <div class="estado vencido">
+            FOLIO {{ resultado.folio }} : VENCIDO
+        </div>
+    {% else %}
+        <div class="estado">
+            FOLIO {{ resultado.folio }} : VIGENTE
+        </div>
+    {% endif %}
+
+    {% if resultado.estado != "No encontrado" %}
+    <div class="certificado">
+        <div class="dato">
+            <strong>Fecha de Expedición:</strong>
+            {{ resultado.fecha_expedicion }}
+        </div>
+        <div class="dato">
+            <strong>Fecha de Vencimiento:</strong>
+            {{ resultado.fecha_vencimiento }}
+        </div>
+        <div class="dato">
+            <strong>Marca:</strong>
+            {{ resultado.marca }}
+        </div>
+        <div class="dato">
+            <strong>Línea:</strong>
+            {{ resultado.linea }}
+        </div>
+        <div class="dato">
+            <strong>Año:</strong>
+            {{ resultado.año }}
+        </div>
+        <div class="dato">
+            <strong>Número de Serie:</strong>
+            {{ resultado.numero_serie }}
+        </div>
+        <div class="dato">
+            <strong>Número de Motor:</strong>
+            {{ resultado.numero_motor }}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="valido">DOCUMENTO DIGITAL VÁLIDO EN TODO MÉXICO</div>
+
+    <div class="btn-regresar">
+        <a href="{{ url_for('consulta_folio') }}">Regresar</a>
     </div>
 
-    <div class="logos">
-        <img src="{{ url_for('static', filename='img/tlapa_logo.png') }}" alt="Tlapa Logo">
-        <img src="{{ url_for('static', filename='img/guerrero_icon.png') }}" alt="Gobierno Logo">
-    </div>
-
-    <div class="ltm">
-        LTM | Tlapa de Comonfort Gro.
-    </div>
+    <footer>
+        <img src="{{ url_for('static', filename='Piesguana.jpg') }}" alt="Pie de página">
+    </footer>
 
 </body>
 </html>

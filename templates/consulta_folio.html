@@ -3,58 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <title>Consulta de Folio</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body {
+            font-family: 'Georgia', serif;
             margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-image: url("{{ url_for('static', filename='img/fondo_grecas.png') }}");
-            background-size: cover;
-            background-repeat: repeat;
-        }
-
-        header {
-            text-align: center;
-            padding: 10px 0;
+            background-color: #fff;
         }
 
         header img {
-            width: 75%;
-        }
-
-        .container {
-            max-width: 500px;
-            margin: 20px auto;
-            background-color: #f7fbff;
-            border-radius: 10px;
-            padding: 20px;
-            border: 2px solid #87CEFA;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-            text-align: center;
+            width: 100%;
+            display: block;
         }
 
         .titulo {
-            background-color: #1e90ff;
-            color: white;
-            padding: 10px;
-            border-radius: 6px 6px 0 0;
+            text-align: center;
+            font-size: 26px;
+            margin-top: 20px;
             font-weight: bold;
-            font-size: 18px;
+            color: #003366;
         }
 
-        form {
-            margin-top: 20px;
+        main {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 30px 20px;
+            text-align: center;
         }
 
         input[type="text"] {
-            width: 75%;
-            padding: 10px;
-            margin-bottom: 20px;
-            border: 1px solid #ccc;
+            width: 100%;
+            padding: 14px;
             border-radius: 6px;
-            font-size: 14px;
-            text-align: center;
+            border: 1px solid #ccc;
+            margin-bottom: 25px;
+            font-size: 16px;
         }
 
         button {
@@ -65,47 +48,27 @@
             border-radius: 6px;
             font-size: 16px;
             cursor: pointer;
-            width: 80%;
         }
 
         button:hover {
             background-color: #005fa3;
         }
 
-        .logos {
-            text-align: center;
-            margin-top: 30px;
-        }
-
-        .logos img {
-            height: 80px;
-            margin: 0 15px;
-        }
-
-        .ltm {
-            text-align: center;
-            font-size: 35px;
-            font-weight: normal;
-            color: #000;
-            margin-top: 10px;
-            padding-bottom: 30px;
+        footer img {
+            width: 100%;
+            display: block;
         }
 
         @media (max-width: 600px) {
-            .container {
-                width: 90%;
+            .titulo {
+                font-size: 22px;
+                margin-top: 16px;
             }
-
-            input[type="text"], button {
-                width: 90%;
+            main {
+                padding: 20px 10px;
             }
-
-            .logos img {
-                height: 70px;
-            }
-
-            .ltm {
-                font-size: 30px;
+            button {
+                width: 100%;
             }
         }
     </style>
@@ -113,26 +76,21 @@
 <body>
 
     <header>
-        <img src="{{ url_for('static', filename='img/guerrero_logo.png') }}" alt="Guerrero Logo">
+        <img src="{{ url_for('static', filename='Cabezaguana.jpg') }}" alt="Encabezado">
     </header>
 
-    <div class="container">
-        <div class="titulo">CONSULTA TU FOLIO</div>
+    <div class="titulo">CONSULTA TU FOLIO</div>
 
+    <main>
         <form action="/consulta_folio" method="POST">
             <input type="text" name="folio" placeholder="Ingresa tu folio" required>
             <button type="submit">Consultar</button>
         </form>
-    </div>
+    </main>
 
-    <div class="logos">
-        <img src="{{ url_for('static', filename='img/tlapa_logo.png') }}" alt="Tlapa Logo">
-        <img src="{{ url_for('static', filename='img/guerrero_icon.png') }}" alt="Gobierno Logo">
-    </div>
-
-    <div class="ltm">
-        LTM | Tlapa de Comonfort Gro.
-    </div>
+    <footer>
+        <img src="{{ url_for('static', filename='Piesguana.jpg') }}" alt="Pie de página">
+    </footer>
 
 </body>
 </html>

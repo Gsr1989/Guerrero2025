@@ -3,10 +3,82 @@
 <head>
     <meta charset="UTF-8">
     <title>Registro Exitoso</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body {
+            background-color: white;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        header img, footer img {
+            width: 100%;
+            display: block;
+        }
+
+        .titulo {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: #222;
+            margin-top: 20px;
+        }
+
+        .contenido {
+            text-align: center;
+            padding: 30px 20px;
+        }
+
+        .mensaje {
+            font-size: 20px;
+            color: green;
+            font-weight: bold;
+            margin-bottom: 30px;
+        }
+
+        .boton {
+            background-color: #830000;
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            text-decoration: none;
+            margin: 10px;
+            display: inline-block;
+        }
+
+        @media (max-width: 600px) {
+            .titulo {
+                font-size: 20px;
+            }
+
+            .boton {
+                font-size: 14px;
+                padding: 10px 20px;
+            }
+        }
+    </style>
 </head>
 <body>
-    <h2>Registro exitoso</h2>
-    <p>Folio: {{ folio }}</p>
-    <a href="{{ url_for('descargar', folio=folio) }}">Descargar PDF</a>
+
+<header>
+    <img src="{{ url_for('static', filename='Cabezaguana.jpg') }}" alt="Encabezado">
+</header>
+
+<div class="titulo">Secretaría de Movilidad - Registro Exitoso</div>
+
+<div class="contenido">
+    <p class="mensaje">Folio registrado correctamente.</p>
+    <a class="boton" href="{{ url_for('static', filename='pdfs/' + folio + '.pdf') }}" download>Descargar Comprobante PDF</a>
+    <a class="boton" href="{{ url_for('consulta_folio') }}">Consultar Folio</a>
+    <a class="boton" href="{{ url_for('admin') }}">Volver al Panel</a>
+</div>
+
+<footer>
+    <img src="{{ url_for('static', filename='Piesguana.jpg') }}" alt="Pie de página">
+</footer>
+
 </body>
 </html>
