@@ -38,24 +38,25 @@
             box-shadow: 0 0 10px rgba(0,0,0,0.15);
         }
 
-        input[type="text"] {
-            width: 40%; /* reducido aún más */
+        input[type="text"],
+        button {
+            width: 50%;
             padding: 14px;
-            border-radius: 6px;
-            border: 1px solid #ccc;
-            margin-bottom: 25px;
+            margin: 0 auto 25px;
+            display: block;
             font-size: 16px;
+            border-radius: 6px;
+        }
+
+        input[type="text"] {
+            border: 1px solid #ccc;
         }
 
         button {
             background-color: #1976d2;
             color: white;
-            padding: 12px 20px;
             border: none;
-            border-radius: 6px;
-            font-size: 16px;
             cursor: pointer;
-            width: 100%;
         }
 
         button:hover {
@@ -105,7 +106,8 @@
                 height: 70px;
             }
 
-            input[type="text"] {
+            input[type="text"],
+            button {
                 width: 100%;
             }
         }
