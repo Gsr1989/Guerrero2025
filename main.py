@@ -71,7 +71,7 @@ def crear_usuario():
 
 def generar_pdf(folio, numero_serie, fecha_expedicion):
     try:
-        plantilla = "guanajuato.pdf"
+        plantilla = "recibo_permiso_guerrero_img.pdf"  # ÚNICO CAMBIO
         fecha_texto = fecha_expedicion.strftime("%d/%m/%Y")
         ruta_pdf = f"static/pdfs/{folio}.pdf"
         os.makedirs("static/pdfs", exist_ok=True)
