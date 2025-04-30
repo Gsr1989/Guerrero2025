@@ -130,8 +130,8 @@ def registro_usuario():
             "numero_serie": numero_serie,
             "numero_motor": numero_motor,
             "fecha_expedicion": fecha_expedicion.isoformat(),
-            "fecha_vencimiento": fecha_vencimiento.isoformat(),
-            "contribuyente": contribuyente
+            "fecha_vencimiento": fecha_vencimiento.isoformat()
+            # NO SE GUARDA contribuyente
         }
 
         supabase.table("folios_registrados").insert(data).execute()
@@ -175,8 +175,8 @@ def registro_admin():
             "numero_serie": numero_serie,
             "numero_motor": numero_motor,
             "fecha_expedicion": fecha_expedicion.isoformat(),
-            "fecha_vencimiento": fecha_vencimiento.isoformat(),
-            "contribuyente": contribuyente
+            "fecha_vencimiento": fecha_vencimiento.isoformat()
+            # NO SE GUARDA contribuyente
         }
 
         supabase.table("folios_registrados").insert(data).execute()
@@ -211,8 +211,7 @@ def consulta_folio():
                 "linea": registro['linea'],
                 "año": registro['anio'],
                 "numero_serie": registro['numero_serie'],
-                "numero_motor": registro['numero_motor'],
-                "contribuyente": registro['contribuyente']
+                "numero_motor": registro['numero_motor']
             }
 
         return render_template("resultado_consulta.html", resultado=resultado)
