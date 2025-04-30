@@ -69,16 +69,17 @@ def crear_usuario():
 
     return render_template('crear_usuario.html')
 
-def generar_pdf(folio, numero_serie, fecha_expedicion):
+def generar_pdf(folio, fecha_expedicion, fecha_vencimiento, contribuyente):
     try:
-        plantilla = "recibo_permiso_guerrero_img.pdf"  # ÚNICO CAMBIO
-        fecha_texto = fecha_expedicion.strftime("%d/%m/%Y")
+        plantilla = "recibo_permiso_guerrero_img.pdf"
         ruta_pdf = f"static/pdfs/{folio}.pdf"
         os.makedirs("static/pdfs", exist_ok=True)
         doc = fitz.open(plantilla)
         page = doc[0]
-        page.insert_text((259.0, 180.0), numero_serie, fontsize=10, fontname="helv")
-        page.insert_text((259.0, 396.0), fecha_texto, fontsize=10, fontname="helv")
+        page.insert_text((250, 200), f"FOLIO: {folio}", fontsize=12, fontname="helv", align=1)
+        page.insert_text((250, 230), f"EXPEDICIÓN: {fecha_expedicion.strftime('%d/%m/%Y')}", fontsize=12, fontname="helv", align=1)
+        page.insert_text((250, 260), f"VENCIMIENTO: {fecha_vencimiento.strftime('%d/%m/%Y')}", fontsize=12, fontname="helv", align=1)
+        page.insert_text((250, 290), f"NOMBRE: {contribuyente.upper()}", fontsize=12, fontname="helv", align=1)
         doc.save(ruta_pdf)
         return True
     except Exception as e:
@@ -100,6 +101,7 @@ def registro_usuario():
         numero_serie = request.form['serie']
         numero_motor = request.form['motor']
         vigencia = int(request.form['vigencia'])
+        contribuyente = request.form['contribuyente']
 
         existente = supabase.table("folios_registrados").select("*").eq("folio", folio).execute()
         if existente.data:
@@ -128,13 +130,14 @@ def registro_usuario():
             "numero_serie": numero_serie,
             "numero_motor": numero_motor,
             "fecha_expedicion": fecha_expedicion.isoformat(),
-            "fecha_vencimiento": fecha_vencimiento.isoformat()
+            "fecha_vencimiento": fecha_vencimiento.isoformat(),
+            "contribuyente": contribuyente
         }
 
         supabase.table("folios_registrados").insert(data).execute()
         supabase.table("verificaciondigitalcdmx").update({"folios_usados": folios["folios_usados"] + 1}).eq("id", user_id).execute()
 
-        generar_pdf(folio, numero_serie, fecha_expedicion)
+        generar_pdf(folio, fecha_expedicion, fecha_vencimiento, contribuyente)
         return render_template("exitoso.html", folio=folio)
 
     response = supabase.table("verificaciondigitalcdmx").select("folios_asignac, folios_usados").eq("id", user_id).execute()
@@ -154,6 +157,7 @@ def registro_admin():
         numero_serie = request.form['serie']
         numero_motor = request.form['motor']
         vigencia = int(request.form['vigencia'])
+        contribuyente = request.form['contribuyente']
 
         existente = supabase.table("folios_registrados").select("*").eq("folio", folio).execute()
         if existente.data:
@@ -171,11 +175,12 @@ def registro_admin():
             "numero_serie": numero_serie,
             "numero_motor": numero_motor,
             "fecha_expedicion": fecha_expedicion.isoformat(),
-            "fecha_vencimiento": fecha_vencimiento.isoformat()
+            "fecha_vencimiento": fecha_vencimiento.isoformat(),
+            "contribuyente": contribuyente
         }
 
         supabase.table("folios_registrados").insert(data).execute()
-        generar_pdf(folio, numero_serie, fecha_expedicion)
+        generar_pdf(folio, fecha_expedicion, fecha_vencimiento, contribuyente)
         return render_template("exitoso.html", folio=folio)
 
     return render_template('registro_admin.html')
@@ -206,7 +211,8 @@ def consulta_folio():
                 "linea": registro['linea'],
                 "año": registro['anio'],
                 "numero_serie": registro['numero_serie'],
-                "numero_motor": registro['numero_motor']
+                "numero_motor": registro['numero_motor'],
+                "contribuyente": registro['contribuyente']
             }
 
         return render_template("resultado_consulta.html", resultado=resultado)
