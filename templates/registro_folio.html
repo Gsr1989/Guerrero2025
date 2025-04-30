@@ -7,15 +7,18 @@
     <style>
         body {
             font-family: 'Georgia', serif;
-            background-color: #ffffff;
             margin: 0;
             padding: 0;
+            background: url('{{ url_for('static', filename='img/fondo_grecas.png') }}') no-repeat center center;
+            background-size: cover;
+            background-attachment: fixed;
             color: #003366;
         }
 
-        header img, footer img {
-            width: 100%;
+        header img {
+            width: 80%;
             display: block;
+            margin: 10px auto 0;
         }
 
         .titulo {
@@ -29,9 +32,9 @@
             max-width: 600px;
             margin: auto;
             padding: 25px 20px;
-            background-color: #e6f2fb;
+            background-color: white;
             border-radius: 12px;
-            border: 2px solid #cce6f5;
+            box-shadow: 0 0 10px rgba(0,0,0,0.15);
         }
 
         input, select {
@@ -44,7 +47,7 @@
         }
 
         .btn {
-            background-color: #2a72a5;
+            background-color: #1976d2;
             color: white;
             border: none;
             padding: 12px;
@@ -55,7 +58,7 @@
         }
 
         .btn:hover {
-            background-color: #1e5b88;
+            background-color: #145a9e;
         }
 
         .mensaje {
@@ -64,10 +67,46 @@
             font-weight: bold;
         }
 
+        .logos {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 25px;
+            margin: 40px auto 10px;
+        }
+
+        .logos img {
+            height: 90px;
+            object-fit: contain;
+        }
+
+        .leyenda {
+            text-align: center;
+            font-size: 35px;
+            font-weight: bold;
+            color: #444;
+            margin: 30px 20px 60px;
+        }
+
         @media (max-width: 600px) {
+            header img {
+                width: 90%;
+            }
+
             .titulo {
                 font-size: 22px;
-                margin-top: 20px;
+            }
+
+            form {
+                padding: 20px 15px;
+            }
+
+            .leyenda {
+                font-size: 24px;
+            }
+
+            .logos img {
+                height: 70px;
             }
         }
     </style>
@@ -75,7 +114,7 @@
 <body>
 
 <header>
-    <img src="{{ url_for('static', filename='Cabezaguana.jpg') }}" alt="Encabezado">
+    <img src="{{ url_for('static', filename='img/guerrero_logo.png') }}" alt="Encabezado">
 </header>
 
 <div class="titulo">Secretaría de Movilidad - Registro de Folio</div>
@@ -109,9 +148,12 @@
     <button type="submit" class="btn">Registrar</button>
 </form>
 
-<footer>
-    <img src="{{ url_for('static', filename='Piesguana.jpg') }}" alt="Pie de página">
-</footer>
+<div class="logos">
+    <img src="{{ url_for('static', filename='img/guerrero_icon.png') }}" alt="Icono Guerrero">
+    <img src="{{ url_for('static', filename='img/tlapa_logo.png') }}" alt="Logo Tlapa">
+</div>
+
+<div class="leyenda">LTM | Tlapa de Comonfort Gro.</div>
 
 </body>
 </html>
