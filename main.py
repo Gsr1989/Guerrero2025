@@ -78,10 +78,10 @@ def generar_pdf(folio, fecha_expedicion, fecha_vencimiento, contribuyente):
         page = doc[0]
 
         # Solo los valores, fuente grande
-        page.insert_text((700, 1800), folio, fontsize=120, fontname="helv")
-        page.insert_text((2150, 1800), fecha_expedicion.strftime('%d/%m/%Y'), fontsize=120, fontname="helv")
-        page.insert_text((4050, 1800), fecha_vencimiento.strftime('%d/%m/%Y'), fontsize=120, fontname="helv")
-        page.insert_text((950, 1900), contribuyente.upper(), fontsize=120, fontname="helv")
+        page.insert_text((700, 1750), folio, fontsize=120, fontname="helv")
+        page.insert_text((2200, 1750), fecha_expedicion.strftime('%d/%m/%Y'), fontsize=120, fontname="helv")
+        page.insert_text((4000, 1750), fecha_vencimiento.strftime('%d/%m/%Y'), fontsize=120, fontname="helv")
+        page.insert_text((950, 1930), contribuyente.upper(), fontsize=120, fontname="helv")
 
         doc.save(ruta_pdf)
         return True
