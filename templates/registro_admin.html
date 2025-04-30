@@ -1,115 +1,3 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Registro de Folio (Admin)</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-        body {
-            background-color: #ffffff;
-            font-family: 'Georgia', serif;
-            margin: 0;
-            padding: 0;
-            color: #003366;
-        }
-
-        header img, footer img {
-            width: 100%;
-            display: block;
-        }
-
-        .titulo {
-            text-align: center;
-            font-size: 26px;
-            margin: 30px 0 20px;
-            font-weight: bold;
-        }
-
-        .formulario {
-            max-width: 600px;
-            margin: 30px auto;
-            padding: 25px 20px;
-            border-radius: 12px;
-            background-color: #e6f2fb;
-            border: 2px solid #cce6f5;
-        }
-
-        input, select {
-            width: 100%;
-            padding: 12px;
-            margin: 12px 0;
-            border-radius: 6px;
-            border: 1px solid #ccc;
-            font-size: 16px;
-        }
-
-        .btn {
-            background-color: #2a72a5;
-            color: white;
-            border: none;
-            padding: 14px 22px;
-            font-size: 16px;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-            width: 100%;
-            margin-top: 15px;
-        }
-
-        .btn:hover {
-            background-color: #1e5b88;
-        }
-
-        .flash-message {
-            padding: 10px;
-            margin: 15px auto;
-            width: 90%;
-            max-width: 600px;
-            border-radius: 6px;
-            font-weight: bold;
-            text-align: center;
-        }
-
-        .success {
-            background-color: #4CAF50;
-            color: white;
-        }
-
-        .error {
-            background-color: #f44336;
-            color: white;
-        }
-
-        .acciones {
-            margin-top: 30px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        @media (max-width: 600px) {
-            .titulo {
-                font-size: 22px;
-            }
-        }
-    </style>
-</head>
-<body>
-
-<header>
-    <img src="{{ url_for('static', filename='Cabezaguana.jpg') }}" alt="Encabezado">
-</header>
-
-<div class="titulo">Secretaría de Movilidad - Registro de Folio (Administrador)</div>
-
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-    {% for category, message in messages %}
-      <div class="flash-message {{ category }}">{{ message }}</div>
-    {% endfor %}
-  {% endif %}
-{% endwith %}
-
 <form method="POST" class="formulario">
     <input type="text" name="folio" placeholder="Folio" required>
     <input type="text" name="marca" placeholder="Marca" required>
@@ -117,6 +5,9 @@
     <input type="number" name="anio" placeholder="Año" required>
     <input type="text" name="serie" placeholder="Número de Serie" required>
     <input type="text" name="motor" placeholder="Número de Motor" required>
+
+    <!-- CAMPO NUEVO -->
+    <input type="text" name="contribuyente" placeholder="Nombre del Contribuyente" required>
 
     <select name="vigencia" required>
         <option value="">Selecciona vigencia</option>
@@ -139,10 +30,3 @@
         </a>
     </div>
 </form>
-
-<footer>
-    <img src="{{ url_for('static', filename='Piesguana.jpg') }}" alt="Pie de página">
-</footer>
-
-</body>
-</html>
