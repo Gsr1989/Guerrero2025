@@ -81,7 +81,7 @@ def generar_pdf(folio, fecha_expedicion, fecha_vencimiento, contribuyente):
         page.insert_text((350, 880), folio, fontsize=60, fontname="helv")
         page.insert_text((1100, 880), fecha_expedicion.strftime('%d/%m/%Y'), fontsize=60, fontname="helv")
         page.insert_text((2000, 880), fecha_vencimiento.strftime('%d/%m/%Y'), fontsize=60, fontname="helv")
-        page.insert_text((700, 1100), contribuyente.upper(), fontsize=60, fontname="helv")
+        page.insert_text((600, 950), contribuyente.upper(), fontsize=60, fontname="helv")
 
         doc.save(ruta_pdf)
         return True
