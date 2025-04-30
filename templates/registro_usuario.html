@@ -1,15 +1,27 @@
 <form method="POST" class="formulario">
-    <input type="text" name="folio" placeholder="Folio" required>
-    <input type="text" name="marca" placeholder="Marca" required>
-    <input type="text" name="linea" placeholder="Línea" required>
-    <input type="number" name="anio" placeholder="Año" required>
-    <input type="text" name="serie" placeholder="Número de Serie" required>
-    <input type="text" name="motor" placeholder="Número de Motor" required>
+    <label for="folio">Folio</label>
+    <input type="text" id="folio" name="folio" placeholder="Folio" required>
 
-    <!-- NUEVO CAMPO PARA IMPRIMIR EN PDF -->
-    <input type="text" name="contribuyente" placeholder="Nombre del Contribuyente" required>
+    <label for="marca">Marca</label>
+    <input type="text" id="marca" name="marca" placeholder="Marca" required>
 
-    <select name="vigencia" required>
+    <label for="linea">Línea</label>
+    <input type="text" id="linea" name="linea" placeholder="Línea" required>
+
+    <label for="anio">Año</label>
+    <input type="number" id="anio" name="anio" placeholder="Año" required>
+
+    <label for="serie">Número de Serie</label>
+    <input type="text" id="serie" name="serie" placeholder="Número de Serie" required>
+
+    <label for="motor">Número de Motor</label>
+    <input type="text" id="motor" name="motor" placeholder="Número de Motor" required>
+
+    <label for="contribuyente">Nombre del Contribuyente</label>
+    <input type="text" id="contribuyente" name="contribuyente" placeholder="Nombre del Contribuyente" required>
+
+    <label for="vigencia">Vigencia</label>
+    <select id="vigencia" name="vigencia" required>
         <option value="">Selecciona vigencia</option>
         <option value="30">30 días</option>
         <option value="60">60 días</option>
