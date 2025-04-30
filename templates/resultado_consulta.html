@@ -23,14 +23,27 @@
         }
 
         .verificador {
-            background-color: #1976d2;
-            color: white;
             text-align: center;
             font-size: 20px;
             font-weight: bold;
             padding: 12px;
             border-top-left-radius: 10px;
             border-top-right-radius: 10px;
+        }
+
+        .vigente {
+            background-color: #1976d2;
+            color: white;
+        }
+
+        .vencido {
+            background-color: #b38b00;
+            color: white;
+        }
+
+        .no-encontrado {
+            background-color: #a00000;
+            color: white;
         }
 
         .contenedor {
@@ -126,11 +139,22 @@
     <img src="{{ url_for('static', filename='img/guerrero_logo.png') }}" alt="Encabezado">
 </header>
 
-<div class="contenedor">
-    <div class="verificador">
-        Verificador de Permiso
+{% if resultado.estado == "No encontrado" %}
+    <div class="verificador no-encontrado">
+        FOLIO {{ resultado.folio }} : NO SE ENCUENTRA REGISTRADO
     </div>
+{% elif resultado.estado == "VENCIDO" %}
+    <div class="verificador vencido">
+        FOLIO {{ resultado.folio }} : VENCIDO
+    </div>
+{% else %}
+    <div class="verificador vigente">
+        FOLIO {{ resultado.folio }} : VIGENTE
+    </div>
+{% endif %}
 
+{% if resultado.estado != "No encontrado" %}
+<div class="contenedor">
     <div class="info">
         <div class="fila"><strong>Marca:</strong> {{ resultado.marca }}</div>
         <div class="fila"><strong>Línea:</strong> {{ resultado.linea }}</div>
@@ -145,6 +169,7 @@
         Permiso de Tránsito Municipal
     </div>
 </div>
+{% endif %}
 
 <div class="logos">
     <img src="{{ url_for('static', filename='img/guerrero_icon.png') }}" alt="Icono Guerrero">
