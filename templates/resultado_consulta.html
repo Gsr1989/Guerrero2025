@@ -15,7 +15,7 @@
         }
 
         header img {
-            width: 100%;
+            width: 80%; /* 20% más pequeño */
             display: block;
             margin: 0 auto;
         }
@@ -70,7 +70,7 @@
         }
 
         .logos img {
-            height: 60px;
+            height: 90px; /* 50% más grande */
             object-fit: contain;
         }
 
@@ -85,6 +85,14 @@
         @media (max-width: 600px) {
             .leyenda {
                 font-size: 26px;
+            }
+
+            .logos img {
+                height: 70px;
+            }
+
+            header img {
+                width: 90%;
             }
         }
     </style>
