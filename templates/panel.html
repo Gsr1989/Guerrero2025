@@ -7,79 +7,51 @@
     <style>
         body {
             background-color: #ffffff;
-            font-family: 'Georgia', serif;
+            font-family: 'Arial', sans-serif;
             margin: 0;
             padding: 0;
-            color: #003366;
-        }
-
-        header img, footer img {
-            width: 100%;
-            display: block;
-        }
-
-        .titulo {
+            color: #000;
             text-align: center;
-            font-size: 26px;
-            margin: 30px 0 20px;
-            font-weight: bold;
         }
 
-        .botones {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin: 30px auto;
-            flex-wrap: wrap;
-            max-width: 600px;
+        .contenedor {
+            padding: 30px 20px;
         }
 
-        .btn {
-            background-color: #2a72a5;
+        h1 {
+            color: #0a3d62;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        .boton {
+            display: block;
+            width: 90%;
+            max-width: 300px;
+            margin: 10px auto;
+            padding: 12px;
+            font-size: 16px;
+            background-color: #1e3799;
             color: white;
             border: none;
-            padding: 14px 22px;
-            font-size: 16px;
             border-radius: 8px;
             cursor: pointer;
-            transition: background-color 0.3s ease;
+            text-decoration: none;
         }
 
-        .btn:hover {
-            background-color: #1e5b88;
-        }
-
-        @media (max-width: 600px) {
-            .titulo {
-                font-size: 22px;
-                margin-top: 20px;
-            }
-
-            .btn {
-                width: 100%;
-                text-align: center;
-            }
+        .boton:hover {
+            background-color: #3c6382;
         }
     </style>
 </head>
 <body>
+    <div class="contenedor">
+        <h1>Panel de Administración</h1>
 
-<header>
-    <img src="{{ url_for('static', filename='Cabezaguana.jpg') }}" alt="Encabezado">
-</header>
-
-<div class="titulo">Secretaría de Movilidad - Panel de Administración</div>
-
-<div class="botones">
-    <a href="{{ url_for('registro_admin') }}"><button class="btn">Registrar Folio</button></a>
-    <a href="{{ url_for('consulta_folio') }}"><button class="btn">Consultar Folio</button></a>
-    <a href="{{ url_for('crear_usuario') }}"><button class="btn">Crear Usuario</button></a>
-    <a href="{{ url_for('logout') }}"><button class="btn">Cerrar Sesión</button></a>
-</div>
-
-<footer>
-    <img src="{{ url_for('static', filename='Piesguana.jpg') }}" alt="Pie de página">
-</footer>
-
+        <a class="boton" href="/registro_admin">Registrar Permiso</a>
+        <a class="boton" href="/crear_usuario">Crear Usuario</a>
+        <a class="boton" href="/consulta_folio">Consultar Folio</a>
+        <a class="boton" href="/logout">Cerrar Sesión</a>
+    </div>
 </body>
 </html>
