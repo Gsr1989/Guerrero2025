@@ -1,3 +1,74 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Formulario Compacto</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body {
+            background: url('{{ url_for('static', filename='img/fondo_grecas.png') }}') no-repeat center top;
+            background-size: cover;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        .formulario {
+            background-color: #fff;
+            width: 92%;
+            max-width: 500px;
+            margin: 40px auto;
+            border-radius: 12px;
+            padding: 25px 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.15);
+        }
+
+        .formulario label {
+            display: block;
+            margin-top: 10px;
+            font-weight: bold;
+            color: #003366;
+        }
+
+        .formulario input,
+        .formulario select {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .btn {
+            background-color: #1976d2;
+            color: #fff;
+            border: none;
+            padding: 12px;
+            font-size: 16px;
+            border-radius: 8px;
+            width: 100%;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        .btn:hover {
+            background-color: #155fa0;
+        }
+
+        @media (max-width: 600px) {
+            .formulario {
+                padding: 20px 15px;
+            }
+
+            .btn {
+                font-size: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+
 <form method="POST" class="formulario">
     <label for="folio">Folio</label>
     <input type="text" id="folio" name="folio" placeholder="Folio" required>
@@ -30,3 +101,6 @@
 
     <button type="submit" class="btn">Registrar Folio</button>
 </form>
+
+</body>
+</html>
