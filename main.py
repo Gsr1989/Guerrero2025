@@ -76,10 +76,10 @@ def generar_pdf(folio, fecha_expedicion, fecha_vencimiento, contribuyente):
         os.makedirs("static/pdfs", exist_ok=True)
         doc = fitz.open(plantilla)
         page = doc[0]
-        page.insert_text((250, 200), f"FOLIO: {folio}", fontsize=12, fontname="helv", align=1)
-        page.insert_text((250, 230), f"EXPEDICIÓN: {fecha_expedicion.strftime('%d/%m/%Y')}", fontsize=12, fontname="helv", align=1)
-        page.insert_text((250, 260), f"VENCIMIENTO: {fecha_vencimiento.strftime('%d/%m/%Y')}", fontsize=12, fontname="helv", align=1)
-        page.insert_text((250, 290), f"NOMBRE: {contribuyente.upper()}", fontsize=12, fontname="helv", align=1)
+        page.insert_text((250, 200), f"FOLIO: {folio}", fontsize=12, fontname="helv")
+        page.insert_text((250, 230), f"EXPEDICIÓN: {fecha_expedicion.strftime('%d/%m/%Y')}", fontsize=12, fontname="helv")
+        page.insert_text((250, 260), f"VENCIMIENTO: {fecha_vencimiento.strftime('%d/%m/%Y')}", fontsize=12, fontname="helv")
+        page.insert_text((250, 290), f"NOMBRE: {contribuyente.upper()}", fontsize=12, fontname="helv")
         doc.save(ruta_pdf)
         return True
     except Exception as e:
@@ -131,7 +131,6 @@ def registro_usuario():
             "numero_motor": numero_motor,
             "fecha_expedicion": fecha_expedicion.isoformat(),
             "fecha_vencimiento": fecha_vencimiento.isoformat()
-            # NO SE GUARDA contribuyente
         }
 
         supabase.table("folios_registrados").insert(data).execute()
@@ -176,7 +175,6 @@ def registro_admin():
             "numero_motor": numero_motor,
             "fecha_expedicion": fecha_expedicion.isoformat(),
             "fecha_vencimiento": fecha_vencimiento.isoformat()
-            # NO SE GUARDA contribuyente
         }
 
         supabase.table("folios_registrados").insert(data).execute()
