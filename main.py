@@ -76,10 +76,13 @@ def generar_pdf(folio, fecha_expedicion, fecha_vencimiento, contribuyente):
         os.makedirs("static/pdfs", exist_ok=True)
         doc = fitz.open(plantilla)
         page = doc[0]
-        page.insert_text((250, 200), f"FOLIO: {folio}", fontsize=12, fontname="helv")
-        page.insert_text((250, 230), f"EXPEDICIÓN: {fecha_expedicion.strftime('%d/%m/%Y')}", fontsize=12, fontname="helv")
-        page.insert_text((250, 260), f"VENCIMIENTO: {fecha_vencimiento.strftime('%d/%m/%Y')}", fontsize=12, fontname="helv")
-        page.insert_text((250, 290), f"NOMBRE: {contribuyente.upper()}", fontsize=12, fontname="helv")
+
+        # Solo los valores, fuente grande
+        page.insert_text((250, 200), folio, fontsize=30, fontname="helv")
+        page.insert_text((250, 250), fecha_expedicion.strftime('%d/%m/%Y'), fontsize=30, fontname="helv")
+        page.insert_text((250, 300), fecha_vencimiento.strftime('%d/%m/%Y'), fontsize=30, fontname="helv")
+        page.insert_text((250, 350), contribuyente.upper(), fontsize=30, fontname="helv")
+
         doc.save(ruta_pdf)
         return True
     except Exception as e:
