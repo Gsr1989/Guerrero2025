@@ -6,181 +6,122 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         body {
-            background-color: #ffffff;
-            font-family: 'Georgia', serif;
+            background: url('{{ url_for('static', filename='fondo_grecas.png') }}') no-repeat center top;
+            background-size: cover;
+            font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
+            color: black;
         }
 
         header img {
             width: 100%;
             display: block;
+            margin: 0 auto;
         }
 
-        .titulo {
+        .verificador {
+            background-color: #1976d2;
+            color: white;
             text-align: center;
-            font-size: 26px;
-            margin-top: 20px;
+            font-size: 20px;
             font-weight: bold;
-            color: #003366;
+            padding: 12px;
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
         }
 
-        .estado {
-            text-align: center;
-            font-size: 22px;
-            font-weight: bold;
-            margin-top: 30px;
-            padding: 15px;
+        .contenedor {
+            background-color: white;
+            width: 90%;
+            max-width: 600px;
+            margin: 20px auto;
             border-radius: 10px;
-            width: 90%;
-            max-width: 600px;
-            margin-left: auto;
-            margin-right: auto;
-            background-color: #003366;
-            color: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.15);
+            overflow: hidden;
         }
 
-        .vencido {
-            background-color: #b38b00 !important;
+        .info {
+            padding: 20px 25px;
         }
 
-        .no-encontrado {
-            background-color: #a00000 !important;
-        }
-
-        .certificado {
-            border: 2px solid #cce6f5;
-            padding: 30px 20px;
-            border-radius: 12px;
-            width: 90%;
-            max-width: 600px;
-            margin: 30px auto;
-            background-color: #e6f2fb;
-            color: #003366;
-        }
-
-        .dato {
-            margin-bottom: 25px;
+        .fila {
+            margin-bottom: 10px;
             font-size: 16px;
-            text-align: left;
         }
 
-        .dato strong {
-            display: block;
-            font-size: 15px;
-            margin-bottom: 6px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .valido {
-            text-align: center;
+        .fila strong {
             font-weight: bold;
-            margin-top: 20px;
-            color: #003366;
         }
 
-        .btn-regresar {
-            display: block;
-            width: 90%;
-            max-width: 600px;
-            margin: 30px auto;
+        .permiso-box {
+            background-color: #eeeeee;
             text-align: center;
-        }
-
-        .btn-regresar a {
-            background-color: #2a72a5;
-            color: white;
-            text-decoration: none;
-            padding: 12px 20px;
-            border-radius: 8px;
             font-size: 16px;
-            display: inline-block;
+            padding: 12px;
         }
 
-        .btn-regresar a:hover {
-            background-color: #1e5b88;
+        .logos {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 25px;
+            margin-top: 30px;
         }
 
-        footer img {
-            width: 100%;
-            display: block;
+        .logos img {
+            height: 60px;
+            object-fit: contain;
+        }
+
+        .leyenda {
+            text-align: center;
+            font-size: 35px;
+            font-weight: bold;
+            color: #444;
+            margin: 30px 20px 60px;
         }
 
         @media (max-width: 600px) {
-            .titulo {
-                font-size: 22px;
-            }
-            .estado {
-                font-size: 20px;
+            .leyenda {
+                font-size: 26px;
             }
         }
     </style>
 </head>
 <body>
 
-    <header>
-        <img src="{{ url_for('static', filename='Cabezaguana.jpg') }}" alt="Encabezado">
-    </header>
+<header>
+    <img src="{{ url_for('static', filename='guerrero_logo.png') }}" alt="Encabezado">
+</header>
 
-    <div class="titulo">RESULTADO DE CONSULTA DIGITAL</div>
-
-    {% if resultado.estado == "No encontrado" %}
-        <div class="estado no-encontrado">
-            FOLIO {{ resultado.folio }} : NO SE ENCUENTRA REGISTRADO
-        </div>
-    {% elif resultado.estado == "VENCIDO" %}
-        <div class="estado vencido">
-            FOLIO {{ resultado.folio }} : VENCIDO
-        </div>
-    {% else %}
-        <div class="estado">
-            FOLIO {{ resultado.folio }} : VIGENTE
-        </div>
-    {% endif %}
-
-    {% if resultado.estado != "No encontrado" %}
-    <div class="certificado">
-        <div class="dato">
-            <strong>Fecha de Expedición:</strong>
-            {{ resultado.fecha_expedicion }}
-        </div>
-        <div class="dato">
-            <strong>Fecha de Vencimiento:</strong>
-            {{ resultado.fecha_vencimiento }}
-        </div>
-        <div class="dato">
-            <strong>Marca:</strong>
-            {{ resultado.marca }}
-        </div>
-        <div class="dato">
-            <strong>Línea:</strong>
-            {{ resultado.linea }}
-        </div>
-        <div class="dato">
-            <strong>Año:</strong>
-            {{ resultado.año }}
-        </div>
-        <div class="dato">
-            <strong>Número de Serie:</strong>
-            {{ resultado.numero_serie }}
-        </div>
-        <div class="dato">
-            <strong>Número de Motor:</strong>
-            {{ resultado.numero_motor }}
-        </div>
-    </div>
-    {% endif %}
-
-    <div class="valido">DOCUMENTO DIGITAL VÁLIDO EN TODO MÉXICO</div>
-
-    <div class="btn-regresar">
-        <a href="{{ url_for('consulta_folio') }}">Regresar</a>
+<div class="contenedor">
+    <div class="verificador">
+        Verificador de Permiso
     </div>
 
-    <footer>
-        <img src="{{ url_for('static', filename='Piesguana.jpg') }}" alt="Pie de página">
-    </footer>
+    <div class="info">
+        <div class="fila"><strong>Marca:</strong> {{ resultado.marca }}</div>
+        <div class="fila"><strong>Línea:</strong> {{ resultado.linea }}</div>
+        <div class="fila"><strong>Modelo:</strong> {{ resultado.año }}</div>
+        <div class="fila"><strong>Color:</strong> {{ resultado.color }}</div>
+        <div class="fila"><strong>Número de Serie:</strong> {{ resultado.numero_serie }}</div>
+        <div class="fila"><strong>Número de Motor:</strong> {{ resultado.numero_motor }}</div>
+        <div class="fila"><strong>Fecha Expedición:</strong> {{ resultado.fecha_expedicion }}</div>
+        <div class="fila"><strong>Fecha Vencimiento:</strong> {{ resultado.fecha_vencimiento }}</div>
+    </div>
+
+    <div class="permiso-box">
+        Permiso de Tránsito Municipal
+    </div>
+</div>
+
+<div class="logos">
+    <img src="{{ url_for('static', filename='guerrero_icono.png') }}" alt="Icono Guerrero">
+    <img src="{{ url_for('static', filename='tlapa_logo.png') }}" alt="Logo Tlapa">
+</div>
+
+<div class="leyenda">LTM | Tlapa de Comonfort Gro.</div>
 
 </body>
 </html>
