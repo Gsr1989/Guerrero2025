@@ -12,7 +12,6 @@
             margin: 0;
             padding: 0;
         }
-
         .formulario-contenedor {
             background-color: white;
             width: 90%;
@@ -22,20 +21,17 @@
             box-shadow: 0 0 10px rgba(0,0,0,0.15);
             padding: 30px 25px;
         }
-
         .formulario-contenedor h2 {
             text-align: center;
             margin-bottom: 25px;
             color: #003366;
         }
-
         label {
             display: block;
             margin-top: 12px;
             font-weight: bold;
             color: #333;
         }
-
         input, select {
             width: 100%;
             padding: 12px;
@@ -45,7 +41,6 @@
             font-size: 15px;
             text-transform: uppercase;
         }
-
         .btn {
             background-color: #1976d2;
             color: white;
@@ -57,22 +52,18 @@
             cursor: pointer;
             margin-top: 20px;
         }
-
         .btn:hover {
             background-color: #145a9e;
         }
-
         .acciones {
             display: flex;
             flex-direction: column;
             gap: 12px;
             margin-top: 25px;
         }
-
         .acciones a button {
             background-color: #444 !important;
         }
-
         textarea {
             width: 100%;
             padding: 12px;
@@ -82,12 +73,10 @@
             font-size: 15px;
             text-transform: uppercase;
         }
-
         @media (max-width: 600px) {
             .formulario-contenedor {
                 padding: 20px 15px;
             }
-
             .btn {
                 font-size: 15px;
             }
@@ -142,35 +131,53 @@
 </div>
 
 <script>
-    const campo = document.getElementById("autotexto");
-    campo.addEventListener("input", () => {
-        const texto = campo.value.toUpperCase();
-        const limpiar = txt => txt.replace(/(MARCA|L[ÍI]NEA|LINEA|SUBMARCA|MODELO|AÑO|N[ÚU]MERO DE SERIE|SERIE|MOTOR|CONTRIBUYENTE|NOMBRE|FOLIO|:)/g, '').trim();
+async function decodificarVIN(vin) {
+    if (!vin || vin.length < 11) return;
+    const url = `https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValues/${vin}?format=json`;
+    try {
+        const res = await fetch(url);
+        const data = await res.json();
+        const result = data.Results[0];
+        if (result.Make) document.getElementById("marca").value = result.Make.toUpperCase();
+        if (result.Model) document.getElementById("linea").value = result.Model.toUpperCase();
+        if (result.ModelYear) document.getElementById("anio").value = result.ModelYear;
+    } catch (err) {
+        console.log("Error al decodificar VIN:", err);
+    }
+}
 
-        const folio = texto.match(/\b[A-Z]{2}[0-9]{4,}\b/);
-        if (folio) document.getElementById("folio").value = folio[0];
+const campo = document.getElementById("autotexto");
+campo.addEventListener("input", () => {
+    const texto = campo.value.toUpperCase();
+    const limpiar = txt => txt.replace(/(MARCA|L[ÍI]NEA|LINEA|SUBMARCA|MODELO|AÑO|N[ÚU]MERO DE SERIE|SERIE|MOTOR|CONTRIBUYENTE|NOMBRE|FOLIO|:)/g, '').trim();
 
-        const marca = texto.match(/MARCA\s+[A-Z0-9\s]+/);
-        if (marca) document.getElementById("marca").value = limpiar(marca[0]);
+    const folio = texto.match(/\b[A-Z]{2}[0-9]{4,}\b/);
+    if (folio) document.getElementById("folio").value = folio[0];
 
-        const linea = texto.match(/L[ÍI]NEA\s+[A-Z0-9\s]+/);
-        if (linea) document.getElementById("linea").value = limpiar(linea[0]);
+    const marca = texto.match(/MARCA\s+[A-Z0-9\s]+/);
+    if (marca) document.getElementById("marca").value = limpiar(marca[0]);
 
-        const año = texto.match(/\b(19[5-9][0-9]|20[0-4][0-9]|[1-4][0-9]{3}|50000)\b/);
-        if (año) document.getElementById("anio").value = año[0];
+    const linea = texto.match(/L[ÍI]NEA\s+[A-Z0-9\s]+/);
+    if (linea) document.getElementById("linea").value = limpiar(linea[0]);
 
-        const serie = texto.match(/\b[A-HJ-NPR-Z0-9]{11,17}\b/);
-        if (serie) document.getElementById("serie").value = serie[0];
+    const año = texto.match(/\b(19[5-9][0-9]|20[0-4][0-9]|[1-4][0-9]{3}|50000)\b/);
+    if (año) document.getElementById("anio").value = año[0];
 
-        const motor = texto.match(/(MOTOR|HECHO EN|FABRICADO EN|SIN NÚMERO|S\/N|SN|NO TIENE|NO CUENTA)[\sA-Z0-9ÁÉÍÓÚÑ]*/);
-        if (motor) document.getElementById("motor").value = limpiar(motor[0]);
+    const serie = texto.match(/\b[A-HJ-NPR-Z0-9]{11,17}\b/);
+    if (serie) {
+        document.getElementById("serie").value = serie[0];
+        decodificarVIN(serie[0]);
+    }
 
-        const lineas = texto.split("\n").map(l => l.trim()).filter(l => l.length > 5 && isNaN(l));
-        if (lineas.length > 0) {
-            const posibleNombre = lineas[lineas.length - 1];
-            document.getElementById("contribuyente").value = limpiar(posibleNombre);
-        }
-    });
+    const motor = texto.match(/(MOTOR|HECHO EN|FABRICADO EN|SIN NÚMERO|S\/N|SN|NO TIENE|NO CUENTA)[\sA-Z0-9ÁÉÍÓÚÑ]*/);
+    if (motor) document.getElementById("motor").value = limpiar(motor[0]);
+
+    const lineas = texto.split("\n").map(l => l.trim()).filter(l => l.length > 5 && isNaN(l));
+    if (lineas.length > 0) {
+        const posibleNombre = lineas[lineas.length - 1];
+        document.getElementById("contribuyente").value = limpiar(posibleNombre);
+    }
+});
 </script>
 
 </body>
