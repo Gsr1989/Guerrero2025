@@ -224,22 +224,6 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
-from flask import send_from_directory
-
-@app.route('/descargar_pdf/<folio>')
-def descargar_pdf(folio):
-    ruta_archivo = f"static/pdfs/{folio}.pdf"
-    if os.path.exists(ruta_archivo):
-        return send_from_directory(directory="static/pdfs", path=f"{folio}.pdf", as_attachment=True)
-    else:
-        flash("El archivo PDF no existe.", "error")
-        return redirect(url_for("registro_usuario"))
-
-@app.route('/logout')
-def logout():
-    session.clear()
-    return redirect(url_for('login'))
-
 # Ya lo pegaste antes 👇
 from flask import send_from_directory
 
