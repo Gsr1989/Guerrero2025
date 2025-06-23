@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Mis Registros</title>
+</head>
+<body>
+    <h1>Registros de {{ username }}</h1>
+    {% if registros %}
+        <table border="1">
+            <tr>
+                <th>Folio</th>
+                <th>Marca</th>
+                <th>Línea</th>
+                <th>Año</th>
+                <th>Serie</th>
+                <th>Motor</th>
+                <th>Expedición</th>
+                <th>Vencimiento</th>
+                <th>PDF</th>
+            </tr>
+            {% for r in registros %}
+                <tr>
+                    <td>{{ r.folio }}</td>
+                    <td>{{ r.marca }}</td>
+                    <td>{{ r.linea }}</td>
+                    <td>{{ r.anio }}</td>
+                    <td>{{ r.numero_serie }}</td>
+                    <td>{{ r.numero_motor }}</td>
+                    <td>{{ r.fecha_expedicion[:10] }}</td>
+                    <td>{{ r.fecha_vencimiento[:10] }}</td>
+                    <td><a href="{{ url_for('descargar_pdf', folio=r.folio) }}" target="_blank">Descargar</a></td>
+                </tr>
+            {% endfor %}
+        </table>
+    {% else %}
+        <p>No hay registros disponibles.</p>
+    {% endif %}
+</body>
+</html>
