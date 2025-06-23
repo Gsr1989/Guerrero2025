@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session from datetime import datetime, timedelta from supabase import create_client, Client import fitz  # PyMuPDF import os
+from flask import Flask, render_template, request, redirect, url_for, flash, session, send_from_directory from datetime import datetime, timedelta from supabase import create_client, Client import fitz  # PyMuPDF import os
 
 app = Flask(name) app.secret_key = 'clave_muy_segura_123456'
 
@@ -51,8 +51,7 @@ return render_template('crear_usuario.html')
 
 def generar_pdf(folio, fecha_expedicion, fecha_vencimiento, contribuyente): try: plantilla = "recibo_permiso_guerrero_img.pdf" ruta_pdf = f"static/pdfs/{folio}.pdf" os.makedirs("static/pdfs", exist_ok=True) doc = fitz.open(plantilla) page = doc[0]
 
-# Solo los valores, fuente grande
-    page.insert_text((700, 1750), folio, fontsize=120, fontname="helv")
+page.insert_text((700, 1750), folio, fontsize=120, fontname="helv")
     page.insert_text((2200, 1750), fecha_expedicion.strftime('%d/%m/%Y'), fontsize=120, fontname="helv")
     page.insert_text((4000, 1750), fecha_vencimiento.strftime('%d/%m/%Y'), fontsize=120, fontname="helv")
     page.insert_text((950, 1930), contribuyente.upper(), fontsize=120, fontname="helv")
@@ -117,43 +116,6 @@ response = supabase.table("verificaciondigitalcdmx").select("folios_asignac, fol
 folios_info = response.data[0] if response.data else {}
 return render_template("registro_usuario.html", folios_info=folios_info)
 
-@app.route('/registro_admin', methods=['GET', 'POST']) def registro_admin(): if 'admin' not in session: return redirect(url_for('login'))
-
-if request.method == 'POST':
-    folio = request.form['folio']
-    marca = request.form['marca']
-    linea = request.form['linea']
-    anio = request.form['anio']
-    numero_serie = request.form['serie']
-    numero_motor = request.form['motor']
-    vigencia = int(request.form['vigencia'])
-    contribuyente = request.form['contribuyente']
-
-    existente = supabase.table("folios_registrados").select("*").eq("folio", folio).execute()
-    if existente.data:
-        flash('Error: el folio ya existe.', 'error')
-        return render_template('registro_admin.html')
-
-    fecha_expedicion = datetime.now()
-    fecha_vencimiento = fecha_expedicion + timedelta(days=vigencia)
-
-    data = {
-        "folio": folio,
-        "marca": marca,
-        "linea": linea,
-        "anio": anio,
-        "numero_serie": numero_serie,
-        "numero_motor": numero_motor,
-        "fecha_expedicion": fecha_expedicion.isoformat(),
-        "fecha_vencimiento": fecha_vencimiento.isoformat()
-    }
-
-    supabase.table("folios_registrados").insert(data).execute()
-    generar_pdf(folio, fecha_expedicion, fecha_vencimiento, contribuyente)
-    return render_template("exitoso.html", folio=folio)
-
-return render_template('registro_admin.html')
-
 @app.route('/consulta_folio', methods=['GET', 'POST']) def consulta_folio(): resultado = None if request.method == 'POST': folio = request.form['folio'].strip().upper() response = supabase.table("folios_registrados").select("*").eq("folio", folio).execute() registros = response.data
 
 if not registros:
@@ -180,6 +142,8 @@ if not registros:
     return render_template("resultado_consulta.html", resultado=resultado)
 
 return render_template("consulta_folio.html")
+
+@app.route('/descargar_pdf/<folio>') def descargar_pdf(folio): ruta_archivo = f"static/pdfs/{folio}.pdf" if os.path.exists(ruta_archivo): return send_from_directory(directory="static/pdfs", path=f"{folio}.pdf", as_attachment=True) else: flash("El archivo PDF no existe.", "error") return redirect(url_for("registro_usuario"))
 
 @app.route('/logout') def logout(): session.clear() return redirect(url_for('login'))
 
