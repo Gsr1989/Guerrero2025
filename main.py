@@ -224,11 +224,16 @@ def logout():
 session.clear()
 return redirect(url_for('login'))
 
-from flask import send_from_directory
+@app.route('/ver_registros_admin')
+def ver_registros_admin():
+    if 'admin' not in session:
+        return redirect(url_for('login'))
 
-@app.route('/descargar_pdf/<folio>') def descargar_pdf(folio): ruta_archivo = f"static/pdfs/{folio}.pdf" if os.path.exists(ruta_archivo): return send_from_directory(directory="static/pdfs", path=f"{folio}.pdf", as_attachment=True) else: flash("El archivo PDF no existe.", "error") return redirect(url_for("registro_usuario"))
+    response = supabase.table("folios_registrados").select("*").order("fecha_expedicion", desc=True).execute()
+    registros = response.data if response.data else []
 
-@app.route('/mis_registros') def mis_registros(): if 'user_id' not in session: return redirect(url_for('login')) user_id = session['user_id'] response = supabase.table("folios_registrados").select("*").execute() registros = response.data if response.data else [] return render_template("mis_registros.html", registros=registros)
+    return render_template("mis_registros.html", registros=registros)
+
 
 if name == 'main':
 app.run(debug=True)
