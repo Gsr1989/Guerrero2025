@@ -1,4 +1,3 @@
-
 from flask import Flask, render_template, request, redirect, url_for, flash, session, send_from_directory
 from datetime import datetime, timedelta
 from supabase import create_client, Client
