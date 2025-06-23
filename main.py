@@ -168,5 +168,9 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
+@app.route('/registro_admin')
+def registro_admin():
+    return redirect(url_for('registro_usuario'))
+
 if __name__ == '__main__':
     app.run(debug=True)
