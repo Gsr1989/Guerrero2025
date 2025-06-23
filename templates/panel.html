@@ -2,125 +2,86 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Panel de Administración</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Panel de Administrador</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body {
-            background: url('{{ url_for('static', filename='img/fondo_grecas.png') }}') no-repeat center center;
-            background-size: cover;
-            background-attachment: fixed;
-            font-family: 'Arial', sans-serif;
-            margin: 0;
-            padding: 0;
-            color: #000;
-        }
-
-        header img {
-            width: 80%;
-            display: block;
-            margin: 10px auto 0;
-        }
-
-        .contenedor {
-            text-align: center;
-            padding: 30px 20px;
-            background-color: white;
-            max-width: 500px;
-            margin: 30px auto;
-            border-radius: 12px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.15);
-        }
-
-        h1 {
-            color: #0a3d62;
-            font-size: 24px;
-            margin-bottom: 25px;
-        }
-
-        .boton {
-            display: block;
-            width: 90%;
-            max-width: 300px;
-            margin: 10px auto;
-            padding: 14px;
-            font-size: 16px;
-            background-color: #1976d2;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            text-decoration: none;
-            font-weight: bold;
-        }
-
-        .boton:hover {
-            background-color: #145a9e;
-        }
-
-        .logos {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 25px;
-            margin: 40px auto 10px;
-        }
-
-        .logos img {
-            height: 90px;
-            object-fit: contain;
-        }
-
-        .leyenda {
-            text-align: center;
-            font-size: 35px;
-            font-weight: bold;
-            color: #444;
-            margin: 30px 20px 60px;
-        }
-
-        @media (max-width: 600px) {
-            header img {
-                width: 90%;
-            }
-
-            h1 {
-                font-size: 22px;
-            }
-
-            .leyenda {
-                font-size: 24px;
-            }
-
-            .logos img {
-                height: 70px;
-            }
-
-            .contenedor {
-                padding: 20px 15px;
-            }
+        #buscador {
+            margin-bottom: 20px;
         }
     </style>
 </head>
-<body>
+<body class="bg-dark text-white">
+    <div class="container mt-5">
+        <h1 class="text-center mb-4">📋 Registros Realizados</h1>
 
-<header>
-    <img src="{{ url_for('static', filename='img/guerrero_logo.png') }}" alt="Encabezado">
-</header>
+        <input type="text" id="buscador" class="form-control" placeholder="Buscar en los registros...">
 
-<div class="contenedor">
-    <h1>Panel de Administración</h1>
-    <a class="boton" href="/registro_admin">Registrar Permiso</a>
-    <a class="boton" href="/crear_usuario">Crear Usuario</a>
-    <a class="boton" href="/consulta_folio">Consultar Folio</a>
-    <a class="boton" href="/logout">Cerrar Sesión</a>
-</div>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+        {% endwith %}
 
-<div class="logos">
-    <img src="{{ url_for('static', filename='img/guerrero_icon.png') }}" alt="Icono Guerrero">
-    <img src="{{ url_for('static', filename='img/tlapa_logo.png') }}" alt="Logo Tlapa">
-</div>
+        <table class="table table-bordered table-dark table-hover align-middle text-center" id="tabla-registros">
+            <thead class="table-light">
+                <tr>
+                    <th>Folio</th>
+                    <th>Marca</th>
+                    <th>Línea</th>
+                    <th>Año</th>
+                    <th>Serie</th>
+                    <th>Motor</th>
+                    <th>Expedición</th>
+                    <th>Vencimiento</th>
+                    <th>PDF</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in registros|sort(attribute='fecha_expedicion', reverse=True) %}
+                <tr>
+                    <td>{{ r.folio }}</td>
+                    <td>{{ r.marca }}</td>
+                    <td>{{ r.linea }}</td>
+                    <td>{{ r.anio }}</td>
+                    <td>{{ r.numero_serie }}</td>
+                    <td>{{ r.numero_motor }}</td>
+                    <td>{{ r.fecha_expedicion[:10] }}</td>
+                    <td>{{ r.fecha_vencimiento[:10] }}</td>
+                    <td>
+                        <a href="{{ url_for('descargar_pdf', folio=r.folio) }}" class="btn btn-sm btn-primary" target="_blank">
+                            Descargar
+                        </a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="9">No hay registros aún.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 
-<div class="leyenda">LTM | Tlapa de Comonfort Gro.</div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const buscador = document.getElementById("buscador");
+        const tabla = document.getElementById("tabla-registros").getElementsByTagName("tbody")[0];
 
+        buscador.addEventListener("input", function () {
+            const filtro = buscador.value.toLowerCase();
+            const filas = tabla.getElementsByTagName("tr");
+
+            for (let i = 0; i < filas.length; i++) {
+                const fila = filas[i];
+                const texto = fila.textContent.toLowerCase();
+                fila.style.display = texto.includes(filtro) ? "" : "none";
+            }
+        });
+    </script>
 </body>
 </html>
