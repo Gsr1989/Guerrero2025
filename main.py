@@ -147,5 +147,13 @@ return render_template("consulta_folio.html")
 
 @app.route('/logout') def logout(): session.clear() return redirect(url_for('login'))
 
+@app.route('/mis_registros')
+def mis_registros():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    registros = supabase.table("folios_registrados").select("*").execute().data or []
+    return render_template("mis_registros.html", registros=registros)
+
 if name == 'main': app.run(debug=True)
 
