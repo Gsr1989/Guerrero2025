@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Registros Realizados</title>
+    <style>
+        body {
+            background: #1c1c1c;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+        }
+        input {
+            margin: 20px auto;
+            display: block;
+            width: 90%;
+            max-width: 600px;
+            padding: 10px;
+        }
+        table {
+            width: 100%;
+            max-width: 100%;
+            border-collapse: collapse;
+            margin: auto;
+        }
+        th, td {
+            border: 1px solid #aaa;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #333;
+        }
+        a.btn {
+            background-color: #4caf50;
+            padding: 6px 10px;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+        a.btn:hover {
+            background-color: #388e3c;
+        }
+    </style>
+</head>
+<body>
+    <h1>📋 Registros Realizados</h1>
+    <input type="text" placeholder="Buscar en los registros..." onkeyup="buscar(this.value)">
+    <table id="tabla">
+        <thead>
+            <tr>
+                <th>Folio</th>
+                <th>Marca</th>
+                <th>Línea</th>
+                <th>Año</th>
+                <th>Serie</th>
+                <th>Motor</th>
+                <th>Expedición</th>
+                <th>Vencimiento</th>
+                <th>PDF</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in registros %}
+            <tr>
+                <td>{{ r.folio }}</td>
+                <td>{{ r.marca }}</td>
+                <td>{{ r.linea }}</td>
+                <td>{{ r.anio }}</td>
+                <td>{{ r.numero_serie }}</td>
+                <td>{{ r.numero_motor }}</td>
+                <td>{{ r.fecha_expedicion[:10] }}</td>
+                <td>{{ r.fecha_vencimiento[:10] }}</td>
+                <td><a class="btn" href="{{ url_for('descargar_pdf', folio=r.folio) }}">Descargar</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <script>
+        function buscar(valor) {
+            let tabla = document.getElementById("tabla");
+            let filas = tabla.getElementsByTagName("tr");
+            for (let i = 1; i < filas.length; i++) {
+                let celdas = filas[i].getElementsByTagName("td");
+                let coincide = false;
+                for (let j = 0; j < celdas.length; j++) {
+                    if (celdas[j].innerText.toLowerCase().includes(valor.toLowerCase())) {
+                        coincide = true;
+                        break;
+                    }
+                }
+                filas[i].style.display = coincide ? "" : "none";
+            }
+        }
+    </script>
+</body>
+</html>
