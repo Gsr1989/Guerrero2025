@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session
+from flask import Flask, render_template, request, redirect, url_for, flash, session, send_from_directory
 from datetime import datetime, timedelta
 from supabase import create_client, Client
 import fitz  # PyMuPDF
@@ -8,7 +8,7 @@ app = Flask(__name__)
 app.secret_key = 'clave_muy_segura_123456'
 
 SUPABASE_URL = "https://xsagwqepoljfsogusubw.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzYWd3cWVwb2xqZnNvZ3VzdWJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM5NjM3NTUsImV4cCI6MjA1OTUzOTc1NX0.NUixULn0m2o49At8j6X58UqbXre2O2_JStqzls_8Gws"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 @app.route('/')
@@ -77,7 +77,6 @@ def generar_pdf(folio, fecha_expedicion, fecha_vencimiento, contribuyente):
         doc = fitz.open(plantilla)
         page = doc[0]
 
-        # Solo los valores, fuente grande
         page.insert_text((700, 1750), folio, fontsize=120, fontname="helv")
         page.insert_text((2200, 1750), fecha_expedicion.strftime('%d/%m/%Y'), fontsize=120, fontname="helv")
         page.insert_text((4000, 1750), fecha_vencimiento.strftime('%d/%m/%Y'), fontsize=120, fontname="helv")
@@ -224,9 +223,6 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
-# Ya lo pegaste antes 👇
-from flask import send_from_directory
-
 @app.route('/descargar_pdf/<folio>')
 def descargar_pdf(folio):
     ruta_archivo = f"static/pdfs/{folio}.pdf"
@@ -236,7 +232,6 @@ def descargar_pdf(folio):
         flash("El archivo PDF no existe.", "error")
         return redirect(url_for("registro_usuario"))
 
-# 👇 AHORA PEGAS ESTE NUEVO ENDPOINT
 @app.route('/mis_registros')
 def mis_registros():
     if 'user_id' not in session:
