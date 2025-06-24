@@ -223,6 +223,14 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
+@app.route('/ver_registros_admin')
+def ver_registros_admin():
+    if 'admin' not in session:
+        return redirect(url_for('login'))
+    response = supabase.table("folios_registrados").select("*").order("fecha_expedicion", desc=True).execute()
+    registros = response.data if response.data else []
+    return render_template("mis_registros.html", registros=registros)
+
 @app.route('/ver_registros')
 def ver_registros():
     if 'admin' not in session:
