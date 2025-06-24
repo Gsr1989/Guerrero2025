@@ -113,7 +113,11 @@
                     {{ registro.fecha_vencimiento[:10] if registro.fecha_vencimiento }}
                 </td>
                 <td>
-                    <a class="btn-descargar" href="{{ url_for('descargar_pdf', folio=registro.folio) }}">Descargar PDF</a>
+                    {% if registro.folio %}
+                        <a class="btn-descargar" href="{{ url_for('descargar_pdf', folio=registro.folio) }}">Descargar PDF</a>
+                    {% else %}
+                        No disponible
+                    {% endif %}
                 </td>
             </tr>
             {% endfor %}
