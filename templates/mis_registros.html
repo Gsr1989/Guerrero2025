@@ -14,9 +14,22 @@
             text-align: center;
             color: #222;
         }
+        .buscador-container {
+            width: 95%;
+            margin: 30px auto 0 auto;
+            text-align: right;
+        }
+        #buscador {
+            padding:8px;
+            border-radius:5px;
+            border:1px solid #ccc;
+            font-size: 16px;
+            margin-bottom: 10px;
+            width: 250px;
+        }
         table {
             width: 95%;
-            margin: 30px auto;
+            margin: 15px auto 30px auto;
             border-collapse: collapse;
             background: #fff;
             box-shadow: 0 0 15px 0 #ccc6;
@@ -79,6 +92,9 @@
     <div class="volver">
         <a href="{{ url_for('admin') }}">Volver al panel</a>
     </div>
+    <div class="buscador-container">
+        <input type="text" id="buscador" placeholder="Buscar... (folio, marca, serie, etc)">
+    </div>
     <table>
         <thead>
             <tr>
@@ -113,15 +129,25 @@
                     {{ registro.fecha_vencimiento[:10] if registro.fecha_vencimiento }}
                 </td>
                 <td>
-                    {% if registro.folio %}
-                        <a class="btn-descargar" href="{{ url_for('descargar_pdf', folio=registro.folio) }}">Descargar PDF</a>
-                    {% else %}
-                        No disponible
-                    {% endif %}
+                    <a class="btn-descargar" href="{{ url_for('descargar_pdf', folio=registro.folio) }}">Descargar PDF</a>
                 </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
+    <script>
+    document.getElementById('buscador').addEventListener('keyup', function() {
+        let valor = this.value.toLowerCase();
+        let filas = document.querySelectorAll('tbody tr');
+        filas.forEach(function(fila) {
+            let texto = fila.innerText.toLowerCase();
+            if(texto.indexOf(valor) > -1) {
+                fila.style.display = '';
+            } else {
+                fila.style.display = 'none';
+            }
+        });
+    });
+    </script>
 </body>
 </html>
