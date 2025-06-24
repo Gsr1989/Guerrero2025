@@ -2,162 +2,122 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Registros Realizados</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Folios Registrados</title>
     <style>
         body {
-            background: linear-gradient(135deg, #1a2980, #26d0ce);
-            min-height: 100vh;
-            font-family: 'Segoe UI', Arial, sans-serif;
+            font-family: Arial, Helvetica, sans-serif;
+            background: #f8f8fa;
             margin: 0;
-            color: #222;
-        }
-        .container {
-            max-width: 1100px;
-            margin: 40px auto;
-            background: #fff;
-            border-radius: 14px;
-            box-shadow: 0 4px 30px rgba(0,0,0,0.13);
-            padding: 36px 16px 26px 16px;
+            padding: 0;
         }
         h1 {
-            font-size: 2.3rem;
-            color: #1976d2;
-            margin-bottom: 22px;
             text-align: center;
-            letter-spacing: 2px;
-            font-weight: bold;
-        }
-        .bienvenido {
-            text-align: right;
-            font-size: 1.1rem;
-            color: #555;
-            margin-bottom: 15px;
+            color: #222;
         }
         table {
+            width: 95%;
+            margin: 30px auto;
             border-collapse: collapse;
-            width: 100%;
-            margin: 0 auto;
-            background: #f9fbfd;
+            background: #fff;
+            box-shadow: 0 0 15px 0 #ccc6;
         }
         th, td {
-            border: 1px solid #e1e8ee;
-            padding: 10px 6px;
+            padding: 10px 8px;
+            border: 1px solid #ddd;
             text-align: center;
         }
         th {
-            background: #1976d2;
+            background: #27265b;
             color: #fff;
-            font-size: 1.08rem;
         }
         tr:nth-child(even) {
-            background: #e3eafc;
+            background: #f1f1ff;
         }
-        tr:hover {
-            background: #bbdefb;
-            transition: .2s;
+        a {
+            text-decoration: none;
+            color: #27265b;
+            font-weight: bold;
         }
-        .pdf-btn {
-            background: #009688;
+        a:hover {
+            text-decoration: underline;
+            color: #0056b3;
+        }
+        .btn-descargar {
+            background: #27265b;
             color: #fff;
             border: none;
-            border-radius: 6px;
-            padding: 7px 17px;
-            font-size: 1rem;
-            font-weight: bold;
+            border-radius: 4px;
+            padding: 6px 14px;
             cursor: pointer;
-            transition: background .2s;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        .btn-descargar:hover {
+            background: #0056b3;
+        }
+        .volver {
+            margin: 30px auto;
+            display: flex;
+            justify-content: center;
+        }
+        .volver a {
+            background: #ccc;
+            color: #27265b;
+            padding: 8px 25px;
+            border-radius: 8px;
             text-decoration: none;
-            display: inline-block;
+            font-weight: bold;
+            box-shadow: 0 2px 7px #0001;
         }
-        .pdf-btn:hover {
-            background: #00695c;
-        }
-        @media (max-width: 900px) {
-            .container { max-width: 99%; padding: 14px 2vw 18px 2vw;}
-            th, td { font-size: 0.92rem; padding: 7px 3px;}
-            h1 { font-size: 1.2rem; }
-        }
-        @media (max-width: 600px) {
-            .container { padding: 10px 2px 6px 2px;}
-            h1 { font-size: 1rem;}
-            table, thead, tbody, th, td, tr { display: block; }
-            thead { display: none; }
-            tr { margin-bottom: 14px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.09);}
-            td {
-                border: none;
-                border-bottom: 1px solid #ddd;
-                position: relative;
-                padding-left: 52%;
-                min-height: 37px;
-                background: #e3eafc;
-                text-align: left;
-            }
-            td:before {
-                position: absolute;
-                left: 8px;
-                top: 6px;
-                width: 48%;
-                white-space: nowrap;
-                font-weight: bold;
-                color: #1976d2;
-            }
-            td:nth-of-type(1):before { content: "Folio"; }
-            td:nth-of-type(2):before { content: "Marca"; }
-            td:nth-of-type(3):before { content: "Línea"; }
-            td:nth-of-type(4):before { content: "Año"; }
-            td:nth-of-type(5):before { content: "Serie"; }
-            td:nth-of-type(6):before { content: "Motor"; }
-            td:nth-of-type(7):before { content: "Expedición"; }
-            td:nth-of-type(8):before { content: "Vencimiento"; }
-            td:nth-of-type(9):before { content: "PDF"; }
+        .volver a:hover {
+            background: #bdbdbd;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="bienvenido">
-            Bienvenido{{ " " + username if username else "" }} |
-            <a href="{{ url_for('admin') }}" style="color:#1976d2;">Volver al panel</a>
-        </div>
-        <h1>📋 Registros Realizados</h1>
-        <table>
-            <thead>
-                <tr>
-                    <th>Folio</th>
-                    <th>Marca</th>
-                    <th>Línea</th>
-                    <th>Año</th>
-                    <th>Serie</th>
-                    <th>Motor</th>
-                    <th>Expedición</th>
-                    <th>Vencimiento</th>
-                    <th>PDF</th>
-                </tr>
-            </thead>
-            <tbody>
-            {% for registro in registros %}
-                <tr>
-                    <td>{{ registro.folio }}</td>
-                    <td>{{ registro.marca }}</td>
-                    <td>{{ registro.linea }}</td>
-                    <td>{{ registro.anio }}</td>
-                    <td>{{ registro.numero_serie }}</td>
-                    <td>{{ registro.numero_motor }}</td>
-                    <td>{{ registro.fecha_expedicion[:10] }}</td>
-                    <td>{{ registro.fecha_vencimiento[:10] }}</td>
-                    <td>
-                        <a class="pdf-btn" href="{{ url_for('descargar_pdf', folio=registro.folio) }}" target="_blank">Descargar PDF</a>
-                    </td>
-                </tr>
-            {% endfor %}
-            {% if not registros %}
-                <tr>
-                    <td colspan="9" style="text-align:center; color:#666;">No hay registros aún.</td>
-                </tr>
-            {% endif %}
-            </tbody>
-        </table>
+    <h1>Folios Registrados</h1>
+    <div class="volver">
+        <a href="{{ url_for('admin') }}">Volver al panel</a>
     </div>
+    <table>
+        <thead>
+            <tr>
+                <th>Folio</th>
+                <th>Marca</th>
+                <th>Linea</th>
+                <th>Año</th>
+                <th>Serie</th>
+                <th>Motor</th>
+                <th>Teléfono</th>
+                <th>Entidad</th>
+                <th>Fecha Expedición</th>
+                <th>Fecha Vencimiento</th>
+                <th>Reimprimir PDF</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for registro in registros %}
+            <tr>
+                <td>{{ registro.folio }}</td>
+                <td>{{ registro.marca }}</td>
+                <td>{{ registro.linea }}</td>
+                <td>{{ registro.anio }}</td>
+                <td>{{ registro.numero_serie }}</td>
+                <td>{{ registro.numero_motor }}</td>
+                <td>{{ registro.numero_telefono }}</td>
+                <td>{{ registro.entidad }}</td>
+                <td>
+                    {{ registro.fecha_expedicion[:10] if registro.fecha_expedicion }}
+                </td>
+                <td>
+                    {{ registro.fecha_vencimiento[:10] if registro.fecha_vencimiento }}
+                </td>
+                <td>
+                    <a class="btn-descargar" href="{{ url_for('descargar_pdf', folio=registro.folio) }}">Descargar PDF</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </body>
 </html>
