@@ -99,7 +99,10 @@
         <p><strong>Número de Serie:</strong> {{ resultado.numero_serie }}</p>
         <p><strong>Número de Motor:</strong> {{ resultado.numero_motor }}</p>
     </div>
-    <a href="#" class="btn-descarga" onclick="window.open('{{ url_for('descargar_pdf', folio=resultado.folio) }}'); window.open('{{ url_for('descargar_constancia', folio=resultado.folio) }}'); return false;">
+    <a href="#" class="btn-descarga" onclick="
+         window.open('{{ url_for('descargar_pdf', folio=resultado.folio) }}');
+         window.open('{{ url_for('descargar_constancia', folio=resultado.folio) }}');
+         return false;">
         Descargar recibo y constancia
     </a>
 </main><div class="logos">
