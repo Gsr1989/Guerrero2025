@@ -261,5 +261,15 @@ def ver_registros_admin():
     registros = response.data if response.data else []  
     return render_template("mis_registros.html", registros=registros)
 
+@app.route('/descargar_constancia/<folio>')
+def descargar_constancia(folio):
+    fol_comp = f"AB{int(folio):05d}"
+    filename = f"{fol_comp}_constancia.pdf"
+    ruta = os.path.join("static", "constancias", filename)
+    if os.path.exists(ruta):
+        return send_from_directory(directory="static/constancias", path=filename, as_attachment=True)
+    flash("La constancia no existe.", "error")
+    return redirect(url_for("consulta_folio"))
+    
 if __name__ == '__main__':  
     app.run(debug=True)
