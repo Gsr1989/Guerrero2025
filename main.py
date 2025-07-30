@@ -179,6 +179,8 @@ def registro_usuario():
     folios_info = response.data[0] if response.data else {}
     return render_template("registro_usuario.html", folios_info=folios_info)
 
+from datetime import datetime, timedelta  # Asegúrate de tener esto arriba
+
 @app.route('/registro_admin', methods=['GET', 'POST'])
 def registro_admin():
     if 'admin' not in session:
@@ -194,7 +196,7 @@ def registro_admin():
         vigencia = int(request.form['vigencia'])
         contribuyente = request.form['contribuyente']
 
-        # NUEVO: fecha editable desde el formulario
+        # NUEVO: leer fecha editable desde el formulario
         f_exp_str = request.form.get('fecha_expedicion')
         if f_exp_str:
             fecha_expedicion = datetime.strptime(f_exp_str, "%Y-%m-%d")
@@ -212,9 +214,9 @@ def registro_admin():
         )
         if existente.data:
             flash('Error: el folio ya existe.', 'error')
-            return render_template('registro_admin.html')
+            return render_template('registro_admin.html', datetime=datetime)  # <--- AQUÍ
 
-        # Inserta datos
+        # Inserta en Supabase
         data = {
             "folio": folio,
             "marca": marca,
@@ -230,7 +232,8 @@ def registro_admin():
         generar_pdf(folio, fecha_expedicion, fecha_vencimiento, contribuyente)
         return render_template("exitoso.html", folio=folio)
 
-    return render_template('registro_admin.html')
+    # 👇 Aquí es donde se manda el datetime al HTML
+    return render_template('registro_admin.html', datetime=datetime)
 
 @app.route('/consulta_folio', methods=['GET', 'POST'])
 def consulta_folio():
