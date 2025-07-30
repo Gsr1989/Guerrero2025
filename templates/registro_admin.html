@@ -110,6 +110,10 @@
         <label for="contribuyente">Nombre del Contribuyente</label>
         <input type="text" id="contribuyente" name="contribuyente" required>
 
+        <!-- FECHA DE EXPEDICIÓN -->
+        <label for="fecha_expedicion">Fecha de Expedición</label>
+        <input type="date" id="fecha_expedicion" name="fecha_expedicion" value="{{ datetime.utcnow().strftime('%Y-%m-%d') }}" required>
+
         <label for="vigencia">Vigencia</label>
         <select id="vigencia" name="vigencia" required>
             <option value="">Selecciona vigencia</option>
