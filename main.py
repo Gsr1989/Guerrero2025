@@ -179,7 +179,6 @@ def registro_usuario():
     folios_info = response.data[0] if response.data else {}
     return render_template("registro_usuario.html", folios_info=folios_info)
 
-
 @app.route('/registro_admin', methods=['GET', 'POST'])
 def registro_admin():
     if 'admin' not in session:
@@ -195,6 +194,16 @@ def registro_admin():
         vigencia = int(request.form['vigencia'])
         contribuyente = request.form['contribuyente']
 
+        # NUEVO: fecha editable desde el formulario
+        f_exp_str = request.form.get('fecha_expedicion')
+        if f_exp_str:
+            fecha_expedicion = datetime.strptime(f_exp_str, "%Y-%m-%d")
+        else:
+            fecha_expedicion = datetime.now()
+
+        fecha_vencimiento = fecha_expedicion + timedelta(days=vigencia)
+
+        # Verifica si el folio ya existe
         existente = (
             supabase.table("folios_registrados")
             .select("*")
@@ -205,8 +214,7 @@ def registro_admin():
             flash('Error: el folio ya existe.', 'error')
             return render_template('registro_admin.html')
 
-        fecha_expedicion = datetime.now()
-        fecha_vencimiento = fecha_expedicion + timedelta(days=vigencia)
+        # Inserta datos
         data = {
             "folio": folio,
             "marca": marca,
@@ -223,7 +231,6 @@ def registro_admin():
         return render_template("exitoso.html", folio=folio)
 
     return render_template('registro_admin.html')
-
 
 @app.route('/consulta_folio', methods=['GET', 'POST'])
 def consulta_folio():
