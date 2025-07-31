@@ -41,6 +41,9 @@
             font-size: 15px;
             text-transform: uppercase;
         }
+        input[type="date"] {
+            text-transform: none;
+        }
         .btn {
             background-color: #1976d2;
             color: white;
@@ -112,12 +115,11 @@
 
         <!-- FECHA DE EXPEDICIÓN -->
         <label for="fecha_expedicion">Fecha de Expedición</label>
-        <input type="date" id="fecha_expedicion" name="fecha_expedicion" value="{{ datetime.utcnow().strftime('%Y-%m-%d') }}" required>
+        <input type="date" id="fecha_expedicion" name="fecha_expedicion" value="{{ datetime.now().strftime('%Y-%m-%d') }}" required>
 
         <label for="vigencia">Vigencia</label>
         <select id="vigencia" name="vigencia" required>
-            <option value="">Selecciona vigencia</option>
-            <option value="30">30 días</option>
+            <option value="30" selected>30 días</option>
             <option value="60">60 días</option>
             <option value="90">90 días</option>
         </select>
