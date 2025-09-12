@@ -324,6 +324,32 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
+@app.route('/consulta/<folio>')
+def consulta_qr_guerrero(folio):
+    folio = folio.strip().upper()
+    resp = supabase.table("folios_registrados").select("*").eq("folio", folio).execute()
+    
+    if not resp.data:
+        resultado = {"estado": "No encontrado", "folio": folio}
+    else:
+        registro = resp.data[0]
+        fe = datetime.fromisoformat(registro['fecha_expedicion'])
+        fv = datetime.fromisoformat(registro['fecha_vencimiento'])
+        estado = "VIGENTE" if datetime.now() <= fv else "VENCIDO"
+        resultado = {
+            "estado": estado,
+            "folio": folio,
+            "fecha_expedicion": fe.strftime("%d/%m/%Y"),
+            "fecha_vencimiento": fv.strftime("%d/%m/%Y"),
+            "marca": registro['marca'],
+            "linea": registro['linea'],
+            "año": registro['anio'],
+            "numero_serie": registro['numero_serie'],
+            "numero_motor": registro['numero_motor']
+        }
+    
+    return render_template("resultado_consulta.html", resultado=resultado)
+
 
 if __name__ == '__main__':
     app.run(debug=True)
