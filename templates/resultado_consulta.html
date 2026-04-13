@@ -7,13 +7,11 @@
 
 <style>
 html, body {
-    height: 100%;
     margin: 0;
     padding: 0;
     font-family: 'Segoe UI', Tahoma, sans-serif;
     background: url('{{ url_for('static', filename='img/fondo_grecas.png') }}') no-repeat center center;
     background-size: cover;
-    background-attachment: fixed;
 }
 
 /* HEADER */
@@ -23,15 +21,16 @@ header img {
     margin: 15px auto;
 }
 
-/* ESTADO */
+/* BARRA ESTADO */
 .verificador {
     text-align: center;
     font-size: 18px;
     font-weight: bold;
     padding: 14px;
-    border-radius: 10px 10px 0 0;
-    letter-spacing: 1px;
-    margin-top: 10px;
+    border-radius: 10px;
+    margin: 10px auto;
+    width: 90%;
+    max-width: 500px;
 }
 
 .vigente {
@@ -51,11 +50,11 @@ header img {
 
 /* CAJA */
 .contenedor {
-    background: white;
+    background: #dcdcdc;
     width: 90%;
     max-width: 500px;
     margin: 0 auto 20px;
-    border-radius: 12px;
+    border-radius: 15px;
     overflow: hidden;
     box-shadow: 0 6px 18px rgba(0,0,0,0.2);
 }
@@ -63,33 +62,19 @@ header img {
 /* DATOS */
 .info {
     padding: 20px;
+    font-size: 16px;
 }
 
 .fila {
-    display: flex;
-    justify-content: space-between;
-    font-size: 15px;
     margin-bottom: 10px;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 6px;
 }
 
-.fila strong {
-    color: #333;
-}
-
-.fila span {
-    color: #555;
-    font-weight: 500;
-}
-
-/* CAJA INFERIOR */
+/* CAJA ABAJO */
 .permiso-box {
     background: #eeeeee;
     text-align: center;
-    font-weight: bold;
     padding: 14px;
-    font-size: 15px;
+    font-size: 16px;
 }
 
 /* LOGOS */
@@ -97,49 +82,42 @@ header img {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 25px;
-    margin-top: 25px;
+    gap: 30px;
+    margin-top: 20px;
 }
 
 .logos img {
-    height: 80px;
+    height: 110px; /* +20% */
 }
 
-/* LEYENDA */
+/* TEXTO FINAL */
 .leyenda {
     text-align: center;
-    font-size: 32px;
-    font-weight: bold;
+    font-size: 42px; /* +30% */
     color: #555;
     margin: 25px 20px;
 }
 
-/* BOTON */
+/* BOTÓN CHIQUITO */
 .salir-btn {
-    display: block;
-    margin: 20px auto 60px;
+    display: inline-block;
     background-color: #a00000;
     color: white;
-    padding: 12px 25px;
-    font-size: 16px;
+    padding: 10px 20px;
+    font-size: 15px;
     text-decoration: none;
     border-radius: 8px;
+    margin: 20px auto 60px;
+}
+
+.boton-container {
+    text-align: center;
 }
 
 .salir-btn:hover {
     background-color: #c20000;
 }
 
-/* MOBILE */
-@media (max-width: 600px) {
-    .leyenda {
-        font-size: 24px;
-    }
-
-    .logos img {
-        height: 65px;
-    }
-}
 </style>
 </head>
 
@@ -150,50 +128,55 @@ header img {
 </header>
 
 {% if resultado.estado == "No encontrado" %}
-<div class="contenedor">
-    <div class="verificador no-encontrado">
-        FOLIO {{ resultado.folio }} : NO SE ENCUENTRA REGISTRADO
-    </div>
+
+<div class="verificador no-encontrado">
+    FOLIO {{ resultado.folio }} : NO SE ENCUENTRA REGISTRADO
 </div>
 
 {% else %}
 
+<div class="verificador 
+    {% if resultado.estado == 'VIGENTE' %}vigente
+    {% else %}vencido{% endif %}">
+    
+    {% if resultado.estado == 'VIGENTE' %}
+        FOLIO {{ resultado.folio }} : VIGENTE
+    {% else %}
+        FOLIO {{ resultado.folio }} : EXPIRADO
+    {% endif %}
+</div>
+
 <div class="contenedor">
-
-    <div class="verificador 
-        {% if resultado.estado == 'VIGENTE' %}vigente
-        {% else %}vencido{% endif %}">
-        Verificador de Permiso
-    </div>
-
     <div class="info">
-        <div class="fila"><strong>Marca</strong><span>{{ resultado.marca }}</span></div>
-        <div class="fila"><strong>Línea</strong><span>{{ resultado.linea }}</span></div>
-        <div class="fila"><strong>Modelo</strong><span>{{ resultado.año }}</span></div>
-        <div class="fila"><strong>Número de Serie</strong><span>{{ resultado.numero_serie }}</span></div>
-        <div class="fila"><strong>Número de Motor</strong><span>{{ resultado.numero_motor }}</span></div>
-        <div class="fila"><strong>Fecha Expedición</strong><span>{{ resultado.fecha_expedicion }}</span></div>
-        <div class="fila"><strong>Fecha Vencimiento</strong><span>{{ resultado.fecha_vencimiento }}</span></div>
+        <div class="fila"><strong>Marca:</strong> {{ resultado.marca }}</div>
+        <div class="fila"><strong>Línea:</strong> {{ resultado.linea }}</div>
+        <div class="fila"><strong>Modelo:</strong> {{ resultado.año }}</div>
+        <div class="fila"><strong>Número de Serie:</strong><br>{{ resultado.numero_serie }}</div>
+        <div class="fila"><strong>Número de Motor:</strong> {{ resultado.numero_motor }}</div>
+        <div class="fila"><strong>Fecha Expedición:</strong> {{ resultado.fecha_expedicion }}</div>
+        <div class="fila"><strong>Fecha Vencimiento:</strong> {{ resultado.fecha_vencimiento }}</div>
     </div>
 
     <div class="permiso-box">
         Permiso de Tránsito Municipal
     </div>
-
 </div>
 
 {% endif %}
 
+<!-- LOGOS INVERTIDOS -->
 <div class="logos">
-    <img src="{{ url_for('static', filename='img/guerrero_icon.png') }}">
     <img src="{{ url_for('static', filename='img/tlapa_logo.png') }}">
+    <img src="{{ url_for('static', filename='img/guerrero_icon.png') }}">
 </div>
 
 <div class="leyenda">LTM | Tlapa de Comonfort Gro.</div>
 
-<a class="salir-btn" href="https://plataforma.direcciontransitotlapadecomonfort.gob.mx/">
-    Salir
-</a>
+<div class="boton-container">
+    <a class="salir-btn" href="https://plataforma.direcciontransitotlapadecomonfort.gob.mx/">
+        Salir
+    </a>
+</div>
 
 </body>
 </html>
