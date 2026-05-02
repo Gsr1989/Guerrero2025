@@ -2,11 +2,11 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Formulario Compacto</title>
+    <title>Registrar Permiso</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         body {
-            background: url('{{ url_for('static', filename='img/fondo_grecas.png') }}') no-repeat center top;
+            background: url('{{ url_for("static", filename="img/fondo_grecas.png") }}') no-repeat center top;
             background-size: cover;
             font-family: Arial, sans-serif;
             margin: 0;
@@ -17,7 +17,7 @@
             background-color: #fff;
             width: 92%;
             max-width: 500px;
-            margin: 40px auto;
+            margin: 30px auto;
             border-radius: 12px;
             padding: 25px 20px;
             box-shadow: 0 0 10px rgba(0,0,0,0.15);
@@ -38,6 +38,7 @@
             border: 1px solid #ccc;
             border-radius: 8px;
             font-size: 14px;
+            box-sizing: border-box;
         }
 
         .btn {
@@ -52,55 +53,224 @@
             margin-top: 20px;
         }
 
-        .btn:hover {
-            background-color: #155fa0;
+        .btn:hover { background-color: #155fa0; }
+
+        .btn-secundario {
+            background-color: #5c6bc0;
+            color: #fff;
+            border: none;
+            padding: 11px;
+            font-size: 15px;
+            border-radius: 8px;
+            width: 100%;
+            cursor: pointer;
+            margin-top: 10px;
+            text-align: center;
+            display: block;
+            text-decoration: none;
+        }
+
+        .btn-secundario:hover { background-color: #3949ab; }
+
+        /* ── Barra de folios ── */
+        .barra-wrap {
+            background: #e0e0e0;
+            border-radius: 8px;
+            height: 16px;
+            width: 100%;
+            margin-top: 6px;
+            overflow: hidden;
+        }
+
+        .barra-fill {
+            height: 100%;
+            border-radius: 8px;
+            transition: width .4s;
+        }
+
+        .info-folios {
+            font-size: 13px;
+            color: #444;
+            margin-top: 4px;
+        }
+
+        /* ── Bloque de pago ── */
+        .bloque-pagado {
+            background: #d4edda;
+            border: 1px solid #28a745;
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-bottom: 14px;
+            font-weight: bold;
+            color: #155724;
+            font-size: 14px;
+        }
+
+        .bloque-pendiente {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-bottom: 14px;
+            font-size: 14px;
+            color: #856404;
+        }
+
+        .bloque-pendiente strong { display: block; margin-bottom: 4px; }
+
+        .barra-timer-wrap {
+            background: #e0e0e0;
+            border-radius: 8px;
+            height: 10px;
+            margin-top: 6px;
+            overflow: hidden;
+        }
+
+        .barra-timer-fill {
+            height: 100%;
+            border-radius: 8px;
+            background: #ffc107;
+            transition: width 1s, background .5s;
+        }
+
+        .hint {
+            font-size: 12px;
+            color: #888;
+            margin-top: 3px;
         }
 
         @media (max-width: 600px) {
-            .formulario {
-                padding: 20px 15px;
-            }
-
-            .btn {
-                font-size: 15px;
-            }
+            .formulario { padding: 20px 15px; }
+            .btn { font-size: 15px; }
         }
     </style>
 </head>
 <body>
 
-<form method="POST" class="formulario">
-    <label for="folio">Folio</label>
-    <input type="text" id="folio" name="folio" placeholder="Folio" required>
+<div class="formulario">
 
-    <label for="marca">Marca</label>
-    <input type="text" id="marca" name="marca" placeholder="Marca" required>
+    <!-- ── BARRA DE FOLIOS ── -->
+    {% set asig  = folios_info.folios_asignac | default(0) %}
+    {% set usados = folios_info.folios_usados | default(0) %}
+    {% set pct   = ((usados / asig) * 100) | round | int if asig > 0 else 0 %}
+    {% set color = '#e74c3c' if pct >= 80 else ('#f39c12' if pct >= 50 else '#27ae60') %}
 
-    <label for="linea">Línea</label>
-    <input type="text" id="linea" name="linea" placeholder="Línea" required>
+    <label style="margin-top:0;">Folios disponibles</label>
+    <div class="barra-wrap">
+        <div class="barra-fill" style="width:{{ pct }}%; background:{{ color }};"></div>
+    </div>
+    <div class="info-folios">
+        {{ usados }} usados de {{ asig }} &nbsp;|&nbsp; <strong>{{ pct }}%</strong> utilizado
+    </div>
 
-    <label for="anio">Año</label>
-    <input type="number" id="anio" name="anio" placeholder="Año" required>
+    <!-- ── ESTADO DE PAGO ── -->
+    <div style="margin-top:14px;">
+    {% if folios_info.pagado %}
+        <div class="bloque-pagado">✅ PAGADO</div>
+    {% else %}
+        <div class="bloque-pendiente" id="bloque-timer">
+            <strong>⚠️ PENDIENTE DE PAGO</strong>
+            <span id="msg-timer">Calculando tiempo restante...</span>
+            <div class="barra-timer-wrap">
+                <div class="barra-timer-fill" id="barra-timer"></div>
+            </div>
+        </div>
+    {% endif %}
+    </div>
 
-    <label for="serie">Número de Serie</label>
-    <input type="text" id="serie" name="serie" placeholder="Número de Serie" required>
+    <!-- ── FORMULARIO ── -->
+    <form method="POST">
 
-    <label for="motor">Número de Motor</label>
-    <input type="text" id="motor" name="motor" placeholder="Número de Motor" required>
+        <label for="folio">Folio <span class="hint">(dejar vacío para generarlo automático)</span></label>
+        <input type="text" id="folio" name="folio" placeholder="Ej: GRO00001 — opcional">
 
-    <label for="contribuyente">Nombre del Contribuyente</label>
-    <input type="text" id="contribuyente" name="contribuyente" placeholder="Nombre del Contribuyente" required>
+        <label for="fecha_expedicion">Fecha de expedición</label>
+        <input type="date" id="fecha_expedicion" name="fecha_expedicion"
+               value="{{ fecha_hoy }}" required>
 
-    <label for="vigencia">Vigencia</label>
-    <select id="vigencia" name="vigencia" required>
-        <option value="">Selecciona vigencia</option>
-        <option value="30">30 días</option>
-        <option value="60">60 días</option>
-        <option value="90">90 días</option>
-    </select>
+        <label for="marca">Marca</label>
+        <input type="text" id="marca" name="marca" placeholder="Marca" required>
 
-    <button type="submit" class="btn">Registrar Folio</button>
-</form>
+        <label for="linea">Línea</label>
+        <input type="text" id="linea" name="linea" placeholder="Línea" required>
+
+        <label for="anio">Año</label>
+        <input type="number" id="anio" name="anio" placeholder="Año" required>
+
+        <label for="serie">Número de Serie</label>
+        <input type="text" id="serie" name="serie" placeholder="Número de Serie" required>
+
+        <label for="motor">Número de Motor</label>
+        <input type="text" id="motor" name="motor" placeholder="Número de Motor" required>
+
+        <label for="contribuyente">Nombre del Contribuyente</label>
+        <input type="text" id="contribuyente" name="contribuyente"
+               placeholder="Nombre del Contribuyente" required>
+
+        <label for="vigencia">Vigencia</label>
+        <select id="vigencia" name="vigencia" required>
+            <option value="">Selecciona vigencia</option>
+            <option value="30">30 días</option>
+            <option value="60">60 días</option>
+            <option value="90">90 días</option>
+        </select>
+
+        <button type="submit" class="btn">Registrar Permiso</button>
+    </form>
+
+    <a href="{{ url_for('mis_permisos') }}" class="btn-secundario">📋 Mis Permisos Generados</a>
+
+</div>
+
+<!-- ── TIMER JS (solo si pendiente) ── -->
+{% if not folios_info.pagado %}
+<script>
+const DURACION_SEG = 2 * 60 * 60;
+
+async function actualizarTimer() {
+    try {
+        const res  = await fetch('/api/timer_estado');
+        const data = await res.json();
+
+        if (data.pagado) {
+            document.getElementById('bloque-timer').outerHTML =
+                '<div class="bloque-pagado">✅ PAGADO</div>';
+            return;
+        }
+
+        const seg = data.timer ? data.timer.segundos_restantes : 0;
+
+        if (seg <= 0) {
+            document.getElementById('msg-timer').textContent =
+                '⛔ Tiempo agotado. Contacta al administrador.';
+            document.getElementById('barra-timer').style.width = '0%';
+            return;
+        }
+
+        const h   = Math.floor(seg / 3600);
+        const m   = Math.floor((seg % 3600) / 60);
+        const s   = seg % 60;
+        const hms = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+
+        let aviso = '';
+        if (seg <= 1800)      aviso = ' — ⚠️ Menos de 30 minutos';
+        else if (seg <= 3600) aviso = ' — ⚠️ Te queda menos de 1 hora';
+
+        document.getElementById('msg-timer').textContent =
+            `Tienes ${hms} para realizar tu pago${aviso}`;
+
+        const pct   = (seg / DURACION_SEG) * 100;
+        const barra = document.getElementById('barra-timer');
+        barra.style.width      = pct + '%';
+        barra.style.background = seg <= 1800 ? '#e74c3c' : seg <= 3600 ? '#f39c12' : '#ffc107';
+
+    } catch(e) { console.error(e); }
+}
+
+actualizarTimer();
+setInterval(actualizarTimer, 5000);
+</script>
+{% endif %}
 
 </body>
 </html>
