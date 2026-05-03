@@ -1,204 +1,151 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8">
-  <title>Secretaría de Transporte | Mis Permisos</title>
-  <base href="/">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <link rel="icon" href="{{ url_for('static', filename='assets/favicon.ico') }}">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900&display=swap" rel="stylesheet">
+    <meta charset="UTF-8">
+    <title>Mis Permisos</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body {
+            background: url('{{ url_for("static", filename="img/fondo_grecas.png") }}') no-repeat center top;
+            background-size: cover;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
 
-  <style>
-    :root{
-      --bg:#fafafa;--txt:#67737a;--muted:#6e6b7b;
-      --verde-jalisco:#28a745;--primary:#4a5568;
-      --border:#e8e8ee;--shadow:0 2px 8px rgba(0,0,0,.08);
-      --ok:#28c76f;--danger:#ea5455;
-    }
-    *,*:before,*:after{box-sizing:border-box}
-    html{font-family:sans-serif;font-size:14px;height:100%}
-    body{
-      margin:0;
-      font-family:"Montserrat",Helvetica,Arial,serif !important;
-      font-size:1rem;font-weight:400;line-height:1.45;
-      color:var(--muted);background-color:var(--bg);
-      display:flex;flex-direction:column;min-height:100vh;
-    }
-    main{flex:1}
-    img{max-width:100%;height:auto}
+        .contenedor {
+            background-color: #fff;
+            width: 92%;
+            max-width: 600px;
+            margin: 30px auto;
+            border-radius: 12px;
+            padding: 25px 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.15);
+        }
 
-    .top-bar{background-color:var(--verde-jalisco);height:8px;width:100%}
-    .header-image{width:100%;height:auto;display:block;object-fit:cover;max-height:250px}
-    @media(max-width:767px){.header-image{max-height:150px}}
+        h2 {
+            color: #003366;
+            margin-top: 0;
+            font-size: 18px;
+            border-bottom: 2px solid #1976d2;
+            padding-bottom: 8px;
+        }
 
-    #float-button{
-      position:fixed;bottom:5%;left:5%;z-index:999;
-      border-radius:100%;height:55px;width:55px;
-      padding:0;border:none;background-color:#f6f6f6;
-      box-shadow:0 .125rem .25rem rgba(34,41,47,.075);cursor:pointer;
-    }
+        .tarjeta {
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 14px;
+            background: #f9f9f9;
+        }
 
-    .container{max-width:680px;margin:0 auto;padding:2rem 1rem}
+        .tarjeta .folio {
+            font-size: 16px;
+            font-weight: bold;
+            color: #003366;
+        }
 
-    .page-title{
-      text-align:center;
-      font:normal normal bold 36px/42px Montserrat;
-      color:var(--txt);margin:2rem 0 .5rem;
-    }
-    .page-subtitle{
-      text-align:center;
-      font:normal normal normal 15px/22px Montserrat;
-      color:var(--txt);margin:0 0 2rem;
-    }
-    @media(max-width:767px){.page-title{font-size:26px;line-height:32px}}
+        .tarjeta .detalle {
+            font-size: 13px;
+            color: #555;
+            margin-top: 4px;
+            line-height: 1.6;
+        }
 
-    /* ── Tarjeta de permiso ── */
-    .tarjeta{
-      background:#fff;
-      border:1px solid var(--border);
-      border-radius:12px;
-      padding:1.25rem 1.5rem;
-      margin-bottom:1rem;
-      box-shadow:var(--shadow);
-    }
+        .badge-vigente {
+            display: inline-block;
+            background: #28a745;
+            color: #fff;
+            border-radius: 5px;
+            padding: 2px 8px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-top: 6px;
+        }
 
-    .tarjeta-folio{
-      font-size:1.1rem;
-      font-weight:800;
-      color:var(--primary);
-      font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
-      letter-spacing:.02em;
-    }
+        .badge-vencido {
+            display: inline-block;
+            background: #e74c3c;
+            color: #fff;
+            border-radius: 5px;
+            padding: 2px 8px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-top: 6px;
+        }
 
-    .tarjeta-detalle{
-      font-size:.9rem;
-      color:var(--muted);
-      margin-top:.5rem;
-      line-height:1.7;
-    }
-    .tarjeta-detalle b{color:#4b4b4b}
+        .btn-descarga {
+            display: block;
+            background-color: #1976d2;
+            color: #fff;
+            text-align: center;
+            padding: 9px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 14px;
+            margin-top: 10px;
+        }
 
-    .badge{
-      display:inline-block;
-      border-radius:.357rem;
-      padding:.3rem .75rem;
-      font-size:.8rem;
-      font-weight:700;
-      color:#fff;
-      margin-top:.6rem;
-    }
-    .badge-listo  {background:var(--verde-jalisco)}
-    .badge-nopdf  {background:var(--danger)}
+        .btn-descarga:hover { background-color: #155fa0; }
 
-    .btn-descarga{
-      display:block;
-      background:var(--verde-jalisco);
-      color:#fff;
-      text-align:center;
-      padding:.75rem 1rem;
-      border-radius:.357rem;
-      text-decoration:none;
-      font-size:.95rem;
-      font-weight:700;
-      margin-top:.75rem;
-      transition:all .2s;
-    }
-    .btn-descarga:hover{
-      background:#24a643;
-      transform:translateY(-2px);
-      box-shadow:0 4px 8px rgba(40,199,111,.3);
-    }
+        .btn-volver {
+            display: block;
+            background-color: #5c6bc0;
+            color: #fff;
+            text-align: center;
+            padding: 11px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 15px;
+            margin-top: 6px;
+        }
 
-    /* ── Acciones bottom ── */
-    .actions-bottom{
-      display:flex;gap:1rem;margin-top:1.5rem;flex-wrap:wrap;
-    }
-    .btn-action{
-      flex:1;padding:.786rem 1.5rem;
-      background:var(--primary);color:white;
-      border:none;border-radius:.357rem;
-      font-family:inherit;font-size:1rem;font-weight:600;
-      cursor:pointer;text-decoration:none;
-      display:inline-block;text-align:center;
-      transition:all .2s;min-width:180px;
-    }
-    .btn-action:hover{background:#3a4454;transform:translateY(-2px)}
-    @media(max-width:600px){
-      .actions-bottom{flex-direction:column}
-      .btn-action{min-width:unset}
-    }
+        .btn-volver:hover { background-color: #3949ab; }
 
-    .sin-registros{
-      text-align:center;color:#888;
-      font-size:.95rem;padding:2.5rem 0;
-    }
-
-    footer{margin-top:auto;width:100%}
-    .footer-image{width:100%;height:auto;display:block}
-  </style>
+        .sin-registros {
+            text-align: center;
+            color: #888;
+            font-size: 14px;
+            padding: 20px 0;
+        }
+    </style>
 </head>
-
 <body>
-  <div class="top-bar"></div>
 
-  <header>
-    <img src="{{ url_for('static', filename='assets/images/header.jpg') }}"
-         alt="Secretaría de Transporte Jalisco" class="header-image">
-  </header>
+<div class="contenedor">
+    <h2>📋 Mis Permisos Generados</h2>
 
-  <button id="float-button" type="button" aria-label="Abrir Menu de Accesibilidad">
-    <img src="{{ url_for('static', filename='assets/images/ico_accesibilidad.svg') }}"
-         alt="Accesibilidad">
-  </button>
-
-  <main>
-    <div class="container">
-      <h1 class="page-title">📋 Mis Permisos</h1>
-      <p class="page-subtitle">Permisos generados con tu cuenta</p>
-
-      {% if permisos %}
-        {% for p in permisos %}
-        {% set fv_str = p.fecha_vencimiento[:10] if p.fecha_vencimiento else '—' %}
-        {% set fe_str = p.fecha_expedicion[:10]  if p.fecha_expedicion  else '—' %}
+    {% if registros %}
+        {% for r in registros %}
+        {% set fv_str = r.fecha_vencimiento[:10] %}
+        {% set fe_str = r.fecha_expedicion[:10] %}
 
         <div class="tarjeta">
-          <div class="tarjeta-folio">{{ p.folio }}</div>
-          <div class="tarjeta-detalle">
-            <b>Vehículo:</b> {{ p.marca }} {{ p.linea }} {{ p.anio }}<br>
-            <b>Serie:</b> {{ p.numero_serie }} &nbsp; <b>Motor:</b> {{ p.numero_motor }}<br>
-            <b>Expedición:</b> {{ fe_str }} &nbsp; <b>Vence:</b> {{ fv_str }}
-          </div>
+            <div class="folio">{{ r.folio }}</div>
+            <div class="detalle">
+                <b>Vehículo:</b> {{ r.marca }} {{ r.linea }} {{ r.anio }}<br>
+                <b>Serie:</b> {{ r.numero_serie }} &nbsp; <b>Motor:</b> {{ r.numero_motor }}<br>
+                <b>Expedición:</b> {{ fe_str }} &nbsp; <b>Vence:</b> {{ fv_str }}
+            </div>
 
-          {% if p.tiene_pdf %}
-            <span class="badge badge-listo">✅ PDF listo</span>
-            <a href="{{ url_for('descargar_recibo', folio=p.folio) }}" class="btn-descarga">
-              ⬇️ Descargar Permiso
-            </a>
-          {% else %}
-            <span class="badge badge-nopdf">❌ PDF no disponible</span>
-          {% endif %}
+            {% if r.tiene_pdf %}
+                <span class="badge-vigente">✅ PDF listo</span>
+                <a href="{{ url_for('descargar_pdf', folio=r.folio) }}" class="btn-descarga">
+                    ⬇️ Descargar Permiso
+                </a>
+            {% else %}
+                <span class="badge-vencido">❌ PDF no disponible</span>
+            {% endif %}
         </div>
         {% endfor %}
-
-      {% else %}
+    {% else %}
         <div class="sin-registros">
-          Aún no tienes permisos registrados.
+            Aún no tienes permisos registrados.
         </div>
-      {% endif %}
+    {% endif %}
 
-      <div class="actions-bottom">
-        <a href="{{ url_for('registro_usuario') }}" class="btn-action">← Volver a Registrar</a>
-        <a href="{{ url_for('consulta_folio') }}"   class="btn-action">🔍 Consultar Folio</a>
-        <a href="{{ url_for('logout') }}"           class="btn-action">🚪 Cerrar Sesión</a>
-      </div>
-    </div>
-  </main>
+    <a href="{{ url_for('registro_usuario') }}" class="btn-volver">← Volver a Registrar</a>
+</div>
 
-  <footer>
-    <img src="{{ url_for('static', filename='assets/images/1000008793.png') }}"
-         alt="Gobierno de Jalisco" class="footer-image">
-  </footer>
 </body>
 </html>
