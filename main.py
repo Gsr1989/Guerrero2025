@@ -522,6 +522,7 @@ def registro_admin():
         fecha_expedicion  = datetime.strptime(f_exp_str, "%Y-%m-%d").replace(tzinfo=TZ_MX) if f_exp_str else datetime.now(TZ_MX)
         fecha_vencimiento = fecha_expedicion + timedelta(days=vigencia)
 
+        # SIN user_id -> folio "oficial" tuyo, autoservicio de renovación habilitado al vencer
         payload_base = {
             "marca":             marca,
             "linea":             linea,
@@ -663,7 +664,7 @@ def api_timer_estado():
     })
 
 
-# ─── USUARIO (3RO) ───────────────────────────────────────────────────────────
+# ─── USUARIO (3RO — vende lotes de folios) ───────────────────────────────────
 
 @app.route('/registro_usuario', methods=['GET', 'POST'])
 def registro_usuario():
@@ -702,6 +703,8 @@ def registro_usuario():
             flash("No tienes folios disponibles.", "error")
             return redirect(url_for('registro_usuario'))
 
+        # CON user_id -> folio "de lote" de este tercero.
+        # Esto es lo único que bloquea el autoservicio de renovación más adelante.
         payload_base = {
             "marca":             marca,
             "linea":             linea,
@@ -818,6 +821,12 @@ def _armar_resultado(registro: dict, folio: str) -> dict:
     ahora  = datetime.now(TZ_MX)
     estado = "VIGENTE" if ahora <= fv else "VENCIDO"
 
+    # Blindaje: si el folio tiene user_id, nació de un lote de un tercero.
+    # Esos folios NUNCA muestran botón de renovar — el tercero tiene que
+    # generarlo de nuevo desde su propio lote en /registro_usuario.
+    es_de_lote    = registro.get('user_id') is not None
+    puede_renovar = (estado == "VENCIDO") and not es_de_lote
+
     return {
         "estado":            estado,
         "folio":             folio,
@@ -828,7 +837,7 @@ def _armar_resultado(registro: dict, folio: str) -> dict:
         "año":               registro.get('anio', ''),
         "numero_serie":      registro.get('numero_serie', ''),
         "numero_motor":      registro.get('numero_motor', ''),
-        "puede_renovar":     estado == "VENCIDO",
+        "puede_renovar":     puede_renovar,
         "folio_actual":      folio,
     }
 
@@ -849,6 +858,11 @@ def consulta_folio():
 
 @app.route('/consulta/<folio>')
 def consulta_qr_guerrero(folio):
+    """
+    Misma ruta y mismo template para TODOS los folios — los del bot,
+    los del admin y los de terceros. La diferencia de si puede renovar
+    o no se decide adentro de _armar_resultado, no por ruta ni template.
+    """
     folio = folio.strip().upper()
     resp  = supabase.table("folios_registrados").select("*").eq("folio", folio).execute()
     if not resp.data:
@@ -859,10 +873,8 @@ def consulta_qr_guerrero(folio):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# RENOVACIÓN — genera folio nuevo a partir de uno vencido
+# RENOVACIÓN — solo para folios OFICIALES (bot / admin). Nunca para lotes.
 # Queda PENDIENTE_PAGO. Si no se valida en 48h, se borra solo (DB + Storage).
-# Devuelve pdf_url para que el frontend dispare la descarga automática
-# una sola vez, justo en este momento.
 # ═══════════════════════════════════════════════════════════════════════════
 
 @app.route('/renovar_folio/<folio_viejo>', methods=['POST'])
@@ -874,6 +886,14 @@ def renovar_folio(folio_viejo):
         return jsonify({"ok": False, "error": "Folio original no encontrado"}), 404
 
     original = resp.data[0]
+
+    # Blindaje backend: aunque alguien llame este endpoint a fuerza
+    # (sin pasar por la UI), un folio de lote jamás se renueva gratis.
+    if original.get("user_id"):
+        return jsonify({
+            "ok": False,
+            "error": "Este folio fue emitido por un proveedor. Contacta a quien te lo entregó para renovarlo."
+        }), 403
 
     fecha_exp = datetime.now(TZ_MX)
     fecha_ven = fecha_exp + timedelta(days=30)
@@ -891,6 +911,7 @@ def renovar_folio(folio_viejo):
         "entidad":           "Guerrero",
         "estado":            "RENOVACION",
         "estado_pago":       "PENDIENTE_PAGO",
+        # Sin user_id -> sigue siendo oficial, puede volver a renovarse en el futuro
     }
 
     ok, folio_nuevo = guardar_folio_con_reintento(payload_base)
