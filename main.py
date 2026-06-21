@@ -97,7 +97,6 @@ def _generar_pdf_permiso(datos: dict) -> str:
         doc = fitz.open(PLANTILLA_PERMISO)
         pg  = doc[0]
 
-        # Campos normales
         for campo in ["folio","fecha_exp","fecha_ven","serie","motor",
                       "marca","linea","color","nombre"]:
             if campo in coords_guerrero and campo in datos:
@@ -111,7 +110,6 @@ def _generar_pdf_permiso(datos: dict) -> str:
         x, y, s, col = coords_guerrero["costo"]
         pg.insert_text((x, y), f"${datos['costo']}", fontsize=s, color=col)
 
-        # Campos rotados
         rot_campos = [
             ("rot_folio",     fol),
             ("rot_fecha_exp", datos["fecha_exp"]),
@@ -130,7 +128,6 @@ def _generar_pdf_permiso(datos: dict) -> str:
             x, y, s, _ = coords_guerrero[k]
             pg.insert_text((x, y), val, fontsize=s, rotate=270)
 
-        # QR
         qr_pix = _make_qr_pixmap(fol)
         pg.insert_image(fitz.Rect(80, 460, 80+97, 460+97), pixmap=qr_pix, overlay=True)
 
@@ -156,12 +153,10 @@ def _generar_pdf_recibo(datos: dict) -> str:
                 page.insert_text((x, y), str(datos.get(campo, "")),
                                  fontsize=size, color=color, fontname="helv")
 
-        # Costo con signo $
         x, y, size, color = coords_recibo["costo"]
         page.insert_text((x, y), f"${datos.get('costo', '')}",
                          fontsize=size, color=color, fontname="helv")
 
-        # QR
         x, y, size, _ = coords_recibo["qr"]
         qr_pix = _make_qr_pixmap(fol)
         page.insert_image(fitz.Rect(x, y, x+size, y+size), pixmap=qr_pix)
@@ -190,7 +185,6 @@ def subir_pdf_a_storage(ruta_local: str, folio: str) -> str:
 
         nombre_archivo = f"{folio}.pdf"
 
-        # Sobrescribe si ya existe (útil para renovaciones del mismo folio)
         supabase.storage.from_(BUCKET_NAME).upload(
             path=nombre_archivo,
             file=contenido,
@@ -238,7 +232,6 @@ def generar_pdf_unificado(datos: dict) -> str:
 
         print(f"[PDF] Unificado OK: {final}")
 
-        # ── Sube a Storage y guarda la URL en Supabase ──
         if os.path.exists(final):
             url = subir_pdf_a_storage(final, fol)
             if url:
@@ -309,7 +302,7 @@ def _inicializar_watermark_folio() -> int:
     actual = _sb_leer_watermark_folio()
     if actual is not None:
         return actual
-    inicio = _folio_a_entero("ZY4917") - 1  # -1 porque el generador hace +1 antes de usar
+    inicio = _folio_a_entero("ZY4917") - 1
     _sb_guardar_watermark_folio(inicio)
     print(f"[FOLIO] Watermark inicializado en ZY4917")
     return inicio
@@ -386,12 +379,10 @@ def limpiar_folios_no_pagados():
             folio = row["folio"]
             supabase.table("folios_registrados").delete().eq("folio", folio).execute()
 
-            # Borra PDF local si existe
             ruta = f"{OUTPUT_DIR}/{folio}.pdf"
             if os.path.exists(ruta):
                 os.remove(ruta)
 
-            # Borra PDF de Storage
             try:
                 supabase.storage.from_(BUCKET_NAME).remove([f"{folio}.pdf"])
             except Exception as e:
@@ -696,7 +687,6 @@ def registro_usuario():
         fecha_expedicion  = datetime.strptime(f_exp_str, "%Y-%m-%d").replace(tzinfo=TZ_MX) if f_exp_str else datetime.now(TZ_MX)
         fecha_vencimiento = fecha_expedicion + timedelta(days=vigencia)
 
-        # Verificar folios disponibles
         u_data = (
             supabase.table("verificaciondigitalcdmx")
             .select("folios_asignac, folios_usados")
@@ -746,7 +736,6 @@ def registro_usuario():
                 flash('Error al generar folio. Intenta de nuevo.', 'error')
                 return redirect(url_for('registro_usuario'))
 
-        # Descontar folio
         supabase.table("verificaciondigitalcdmx") \
             .update({"folios_usados": folios["folios_usados"] + 1}) \
             .eq("id", user_id).execute()
@@ -771,7 +760,6 @@ def registro_usuario():
 
         return render_template("exitoso.html", folio=folio)
 
-    # ── GET ──────────────────────────────────────────────────────────────────
     try:
         response    = (
             supabase.table("verificaciondigitalcdmx")
@@ -873,6 +861,8 @@ def consulta_qr_guerrero(folio):
 # ═══════════════════════════════════════════════════════════════════════════
 # RENOVACIÓN — genera folio nuevo a partir de uno vencido
 # Queda PENDIENTE_PAGO. Si no se valida en 48h, se borra solo (DB + Storage).
+# Devuelve pdf_url para que el frontend dispare la descarga automática
+# una sola vez, justo en este momento.
 # ═══════════════════════════════════════════════════════════════════════════
 
 @app.route('/renovar_folio/<folio_viejo>', methods=['POST'])
@@ -922,12 +912,23 @@ def renovar_folio(folio_viejo):
         "fecha_exp": fecha_exp.strftime("%d/%m/%Y"),
         "fecha_ven": fecha_ven.strftime("%d/%m/%Y"),
     }
+
+    # Genera PDF, sube a Storage y guarda pdf_url en la misma llamada
     generar_pdf_unificado(datos_pdf)
+
+    # Relee el folio para traer el pdf_url recién guardado
+    folio_actualizado = supabase.table("folios_registrados") \
+        .select("pdf_url").eq("folio", folio_nuevo).execute()
+
+    pdf_url = ""
+    if folio_actualizado.data and folio_actualizado.data[0].get("pdf_url"):
+        pdf_url = folio_actualizado.data[0]["pdf_url"]
 
     return jsonify({
         "ok": True,
         "folio_nuevo": folio_nuevo,
-        "horas_limite": HORAS_LIMITE_PAGO
+        "horas_limite": HORAS_LIMITE_PAGO,
+        "pdf_url": pdf_url
     })
 
 
@@ -946,7 +947,6 @@ def descargar_pdf(folio):
             flash("No tienes permiso para descargar este archivo.", "error")
             return redirect(url_for('mis_permisos'))
 
-    # Prioridad: Storage (sobrevive a reinicios) > disco local (fallback)
     if resp.data and resp.data[0].get("pdf_url"):
         return redirect(resp.data[0]["pdf_url"])
 
