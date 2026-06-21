@@ -211,22 +211,49 @@ function confirmarRenovacion(folio) {
 
     const btn = document.getElementById('btnRenovar');
     btn.disabled = true;
-    btn.textContent = "Generando...";
+    btn.textContent = "Generando tu permiso...";
 
     fetch(`/renovar_folio/${folio}`, { method: 'POST' })
         .then(r => r.json())
         .then(data => {
-            if (data.ok) {
-                alert(
-                    `Folio nuevo generado: ${data.folio_nuevo}\n\n` +
-                    `Tienes ${data.horas_limite} horas para pagar.`
-                );
-                window.location.href = `/consulta/${data.folio_nuevo}`;
-            } else {
+            if (!data.ok) {
                 alert("Error: " + data.error);
                 btn.disabled = false;
                 btn.textContent = "Renovar tu permiso";
+                return;
             }
+
+            // El folio ya quedó registrado. El PDF se genera en background
+            // en el servidor para no congelar el botón. Hacemos polling
+            // corto hasta que esté listo (máx 20s de espera).
+            btn.textContent = "Preparando tu PDF...";
+            let intentos = 0;
+            const checarPdf = setInterval(() => {
+                intentos++;
+                fetch(`/estado_pdf/${data.folio_nuevo}`)
+                    .then(r => r.json())
+                    .then(estado => {
+                        if (estado.pdf_url) {
+                            clearInterval(checarPdf);
+                            const a = document.createElement('a');
+                            a.href = estado.pdf_url;
+                            a.download = `${data.folio_nuevo}.pdf`;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            window.location.href = `/consulta/${data.folio_nuevo}`;
+                        } else if (intentos >= 10) {
+                            // Pasados ~20s sin pdf_url, igual lo mandamos
+                            // a su consulta — ahí puede reintentar la descarga.
+                            clearInterval(checarPdf);
+                            window.location.href = `/consulta/${data.folio_nuevo}`;
+                        }
+                    })
+                    .catch(() => {
+                        // Si falla la consulta de estado, no detenemos el polling,
+                        // simplemente lo intentamos de nuevo en el siguiente ciclo.
+                    });
+            }, 2000);
         })
         .catch(() => {
             alert("Error de conexión, intenta de nuevo.");
