@@ -38,6 +38,13 @@ BUCKET_NAME       = "permisos-guerrero"
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
+# ─── LOCK GLOBAL PDF ─────────────────────────────────────────────────────────
+# PyMuPDF (fitz) NO es thread-safe. Si dos generaciones de PDF corren al
+# mismo tiempo en threads distintos, se corrompen entre sí y solo se
+# completa una mitad (ej. solo el recibo, sin el permiso). Este Lock
+# asegura que en todo el proceso solo se genere UN PDF a la vez.
+_pdf_generation_lock = threading.Lock()
+
 # ─── COORDENADAS (extraídas del bot) ─────────────────────────────────────────
 coords_guerrero = {
     "folio":         (360, 769,  8, (1,0,0)),
@@ -200,53 +207,60 @@ def subir_pdf_a_storage(ruta_local: str, folio: str) -> str:
 def generar_pdf_unificado(datos: dict) -> str:
     """
     Genera permiso + recibo en un solo PDF, lo sube a Storage y guarda
-    la URL pública en Supabase. Se llama SIEMPRE dentro de un thread aparte
-    cuando se invoca desde un request HTTP, para no bloquear el worker
-    de gunicorn y evitar WORKER TIMEOUT.
+    la URL pública en Supabase.
+
+    IMPORTANTE: TODO el cuerpo va dentro de _pdf_generation_lock porque
+    PyMuPDF no es thread-safe. Si dos renovaciones casi simultáneas
+    lanzan threads al mismo tiempo, sin el Lock se corrompen entre sí
+    (eso causaba que solo llegara el recibo, sin el permiso, cuando
+    alguien picaba "Renovar" varias veces seguidas).
     """
     fol   = datos["folio"]
     final = f"{OUTPUT_DIR}/{fol}.pdf"
     t0 = time.time()
-    try:
-        p1 = _generar_pdf_permiso(datos)
-        p2 = _generar_pdf_recibo(datos)
-        print(f"[PDF THREAD] permiso+recibo generados en {time.time()-t0:.2f}s")
 
-        if not p1 or not p2:
-            fallback = p1 or p2
-            if fallback and fallback != final:
-                import shutil
-                shutil.copy(fallback, final)
-        else:
-            d1 = fitz.open(p1)
-            d2 = fitz.open(p2)
-            d1.insert_pdf(d2)
-            d1.save(final)
-            d1.close()
-            d2.close()
-            for tmp in [p1, p2]:
-                try:
-                    os.remove(tmp)
-                except Exception:
-                    pass
+    with _pdf_generation_lock:
+        try:
+            p1 = _generar_pdf_permiso(datos)
+            p2 = _generar_pdf_recibo(datos)
+            print(f"[PDF THREAD] permiso+recibo generados en {time.time()-t0:.2f}s")
 
-        print(f"[PDF] Unificado OK: {final} ({time.time()-t0:.2f}s)")
+            if not p1 or not p2:
+                print(f"[WARN] PDF incompleto para {fol}: permiso={bool(p1)} recibo={bool(p2)}")
+                fallback = p1 or p2
+                if fallback and fallback != final:
+                    import shutil
+                    shutil.copy(fallback, final)
+            else:
+                d1 = fitz.open(p1)
+                d2 = fitz.open(p2)
+                d1.insert_pdf(d2)
+                d1.save(final)
+                d1.close()
+                d2.close()
+                for tmp in [p1, p2]:
+                    try:
+                        os.remove(tmp)
+                    except Exception:
+                        pass
 
-        if os.path.exists(final):
-            url = subir_pdf_a_storage(final, fol)
-            print(f"[PDF THREAD] subido a storage en {time.time()-t0:.2f}s")
-            if url:
-                try:
-                    supabase.table("folios_registrados") \
-                        .update({"pdf_url": url}).eq("folio", fol).execute()
-                    print(f"[PDF THREAD] pdf_url guardado en {time.time()-t0:.2f}s TOTAL")
-                except Exception as e:
-                    print(f"[WARN] No se pudo guardar pdf_url en BD: {e}")
+            print(f"[PDF] Unificado OK: {final} ({time.time()-t0:.2f}s)")
 
-        return final
-    except Exception as e:
-        print(f"[ERROR UNIFICADO] {e} (a los {time.time()-t0:.2f}s)")
-        return ""
+            if os.path.exists(final):
+                url = subir_pdf_a_storage(final, fol)
+                print(f"[PDF THREAD] subido a storage en {time.time()-t0:.2f}s")
+                if url:
+                    try:
+                        supabase.table("folios_registrados") \
+                            .update({"pdf_url": url}).eq("folio", fol).execute()
+                        print(f"[PDF THREAD] pdf_url guardado en {time.time()-t0:.2f}s TOTAL")
+                    except Exception as e:
+                        print(f"[WARN] No se pudo guardar pdf_url en BD: {e}")
+
+            return final
+        except Exception as e:
+            print(f"[ERROR UNIFICADO] {e} (a los {time.time()-t0:.2f}s)")
+            return ""
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -352,7 +366,6 @@ def generar_folio_automatico() -> str:
                 print(f"[FOLIO] Asignado: {folio} en {time.time()-t0:.2f}s total")
                 return folio
 
-        # Todo el bloque estaba ocupado -> avanza al siguiente bloque
         actual = inicio + BLOQUE - 1
         revisados += BLOQUE
 
@@ -873,17 +886,19 @@ def consulta_qr_guerrero(folio):
 
 # ═══════════════════════════════════════════════════════════════════════════
 # RENOVACIÓN — solo para folios OFICIALES (bot / admin). Nunca para lotes.
-# El folio se crea de inmediato y se responde al cliente sin esperar el PDF.
-# El PDF se genera en un thread aparte para no bloquear el worker y provocar
-# WORKER TIMEOUT. El frontend hace polling a /estado_pdf hasta que esté listo.
+#
+# IDEMPOTENCIA: si ya existe una renovación PENDIENTE_PAGO generada desde
+# este mismo folio_viejo, se regresa esa en vez de crear una nueva. Esto
+# evita que picarle "Renovar" varias veces (doble click, mala conexión,
+# usuario impaciente) genere un folio distinto cada vez.
 # ═══════════════════════════════════════════════════════════════════════════
 
 @app.route('/renovar_folio/<folio_viejo>', methods=['POST'])
 def renovar_folio(folio_viejo):
     t0 = time.time()
+    folio_viejo = folio_viejo.strip().upper()
     print(f"[RENOVAR] INICIO folio_viejo={folio_viejo}")
 
-    folio_viejo = folio_viejo.strip().upper()
     resp = supabase.table("folios_registrados").select("*").eq("folio", folio_viejo).execute()
     print(f"[RENOVAR] select folio_viejo: {time.time()-t0:.2f}s")
 
@@ -897,6 +912,24 @@ def renovar_folio(folio_viejo):
             "ok": False,
             "error": "Este folio fue emitido por un proveedor. Contacta a quien te lo entregó para renovarlo."
         }), 403
+
+    # ── IDEMPOTENCIA: evita folios duplicados si le picaron varias veces ──
+    ya_existente = supabase.table("folios_registrados") \
+        .select("folio") \
+        .eq("folio_origen", folio_viejo) \
+        .eq("estado_pago", "PENDIENTE_PAGO") \
+        .order("fecha_expedicion", desc=True) \
+        .limit(1).execute()
+
+    if ya_existente.data:
+        folio_existente = ya_existente.data[0]["folio"]
+        print(f"[RENOVAR] Ya existía renovación pendiente: {folio_existente}, "
+              f"regresando esa en vez de crear otra")
+        return jsonify({
+            "ok": True,
+            "folio_nuevo": folio_existente,
+            "horas_limite": HORAS_LIMITE_PAGO
+        })
 
     fecha_exp = datetime.now(TZ_MX)
     fecha_ven = fecha_exp + timedelta(days=30)
@@ -914,6 +947,7 @@ def renovar_folio(folio_viejo):
         "entidad":           "Guerrero",
         "estado":            "RENOVACION",
         "estado_pago":       "PENDIENTE_PAGO",
+        "folio_origen":      folio_viejo,
     }
 
     t1 = time.time()
@@ -941,6 +975,8 @@ def renovar_folio(folio_viejo):
 
     # El folio ya está guardado en Supabase. El PDF se genera en background
     # para que este request regrese de inmediato sin arriesgar WORKER TIMEOUT.
+    # El Lock dentro de generar_pdf_unificado asegura que aunque se disparen
+    # varios threads, solo uno genera PDF a la vez (PyMuPDF no es thread-safe).
     threading.Thread(
         target=generar_pdf_unificado,
         args=(datos_pdf,),
