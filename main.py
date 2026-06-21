@@ -8,6 +8,7 @@ import qrcode
 from io import BytesIO
 import os
 import string
+import threading
 
 app = Flask(__name__)
 app.secret_key = 'clave_muy_segura_123456'
@@ -30,7 +31,7 @@ DOMICILIO_FIJO    = "MEXICO"
 COSTO_FIJO        = "250"
 
 TZ_MX             = ZoneInfo("America/Mexico_City")
-HORAS_LIMITE_PAGO = 48  # renovaciones sin validar se borran a las 48h
+HORAS_LIMITE_PAGO = 48
 
 BUCKET_NAME       = "permisos-guerrero"
 
@@ -174,11 +175,6 @@ def _generar_pdf_recibo(datos: dict) -> str:
 # ═══════════════════════════════════════════════════════════════════════════
 
 def subir_pdf_a_storage(ruta_local: str, folio: str) -> str:
-    """
-    Sube el PDF generado al bucket de Supabase Storage.
-    Devuelve la URL pública, o "" si falla (el archivo local sigue
-    sirviendo como respaldo en ese caso).
-    """
     try:
         with open(ruta_local, "rb") as f:
             contenido = f.read()
@@ -203,8 +199,9 @@ def subir_pdf_a_storage(ruta_local: str, folio: str) -> str:
 def generar_pdf_unificado(datos: dict) -> str:
     """
     Genera permiso + recibo en un solo PDF, lo sube a Storage y guarda
-    la URL pública en Supabase. Devuelve la ruta local (sigue sirviendo
-    como respaldo si Storage falla).
+    la URL pública en Supabase. Llamar SIEMPRE con asyncio.to_thread o
+    threading.Thread cuando se invoca desde dentro de un request HTTP,
+    para no bloquear el worker de gunicorn y evitar WORKER TIMEOUT.
     """
     fol   = datos["folio"]
     final = f"{OUTPUT_DIR}/{fol}.pdf"
@@ -249,15 +246,12 @@ def generar_pdf_unificado(datos: dict) -> str:
 
 # ═══════════════════════════════════════════════════════════════════════════
 # FOLIO AUTOMÁTICO — WATERMARK FORWARD-ONLY, RANGO COMPLETO AA0001-ZZ9999
-# Nunca retrocede a buscar huecos. Avanza siempre hacia adelante.
-# La depuración/reciclaje de folios borrados se hace manualmente una vez al año.
 # ═══════════════════════════════════════════════════════════════════════════
 
 FOLIO_WATERMARK_KEY = "GRO_FOLIO"
-NUMEROS_POR_PREFIJO = 9999  # 0001 a 9999
+NUMEROS_POR_PREFIJO = 9999
 
 def _letras_a_indice(l1: str, l2: str) -> int:
-    """AA=0, AB=1, ..., ZY=649, ZZ=650"""
     return (ord(l1) - 65) * 26 + (ord(l2) - 65)
 
 def _indice_a_letras(idx: int) -> str:
@@ -266,12 +260,10 @@ def _indice_a_letras(idx: int) -> str:
     return f"{l1}{l2}"
 
 def _folio_a_entero(folio: str) -> int:
-    """ZY4917 -> entero único secuencial"""
     l1, l2, numero = folio[0], folio[1], int(folio[2:])
     return _letras_a_indice(l1, l2) * NUMEROS_POR_PREFIJO + (numero - 1)
 
 def _entero_a_folio(n: int) -> str:
-    """Entero -> ZY4917, con wraparound infinito"""
     total_slots = 26 * 26 * NUMEROS_POR_PREFIJO
     n = n % total_slots
     idx_prefijo = n // NUMEROS_POR_PREFIJO
@@ -298,7 +290,6 @@ def _sb_guardar_watermark_folio(numero: int):
         print(f"[ERROR] guardar_watermark folio: {e}")
 
 def _inicializar_watermark_folio() -> int:
-    """Si no hay watermark, arranca desde ZY4917 (donde ya ibas antes)."""
     actual = _sb_leer_watermark_folio()
     if actual is not None:
         return actual
@@ -316,11 +307,6 @@ def _folio_existe(folio: str) -> bool:
         return False
 
 def generar_folio_automatico() -> str:
-    """
-    Avanza el cursor SIEMPRE hacia adelante (ZY -> ZZ -> AA -> AB -> ... -> ZX -> ZY...).
-    Si el folio ya está ocupado (permiso vigente), lo brinca y sigue.
-    Nunca retrocede a buscar huecos.
-    """
     actual = _inicializar_watermark_folio()
     total_slots = 26 * 26 * NUMEROS_POR_PREFIJO
 
@@ -336,11 +322,6 @@ def generar_folio_automatico() -> str:
 
 
 def guardar_folio_con_reintento(payload_base: dict, max_intentos=10) -> tuple:
-    """
-    payload_base: dict listo para insertar SIN 'folio'.
-    Genera folio nuevo en cada intento si hay colisión por race condition.
-    Devuelve (ok, folio_final).
-    """
     for intento in range(max_intentos):
         folio = generar_folio_automatico()
         payload = {**payload_base, "folio": folio}
@@ -362,11 +343,6 @@ def guardar_folio_con_reintento(payload_base: dict, max_intentos=10) -> tuple:
 # ═══════════════════════════════════════════════════════════════════════════
 
 def limpiar_folios_no_pagados():
-    """
-    Corre cada 15 min. Borra folios con estado_pago = PENDIENTE_PAGO
-    creados hace más de 48 horas. Borrado REAL — es la penalización.
-    También borra el PDF del bucket de Storage.
-    """
     try:
         limite = (datetime.now(TZ_MX) - timedelta(hours=HORAS_LIMITE_PAGO)).isoformat()
         vencidos = supabase.table("folios_registrados") \
@@ -522,7 +498,6 @@ def registro_admin():
         fecha_expedicion  = datetime.strptime(f_exp_str, "%Y-%m-%d").replace(tzinfo=TZ_MX) if f_exp_str else datetime.now(TZ_MX)
         fecha_vencimiento = fecha_expedicion + timedelta(days=vigencia)
 
-        # SIN user_id -> folio "oficial" tuyo, autoservicio de renovación habilitado al vencer
         payload_base = {
             "marca":             marca,
             "linea":             linea,
@@ -596,10 +571,6 @@ def ver_registros_admin():
 
 @app.route('/admin/validar_pago/<folio>', methods=['POST'])
 def validar_pago(folio):
-    """
-    Marca un folio PENDIENTE_PAGO como VALIDADO.
-    A partir de aquí el folio queda a salvo de la limpieza de 48h.
-    """
     if 'admin' not in session:
         return redirect(url_for('login'))
     folio = folio.strip().upper()
@@ -703,8 +674,6 @@ def registro_usuario():
             flash("No tienes folios disponibles.", "error")
             return redirect(url_for('registro_usuario'))
 
-        # CON user_id -> folio "de lote" de este tercero.
-        # Esto es lo único que bloquea el autoservicio de renovación más adelante.
         payload_base = {
             "marca":             marca,
             "linea":             linea,
@@ -821,9 +790,6 @@ def _armar_resultado(registro: dict, folio: str) -> dict:
     ahora  = datetime.now(TZ_MX)
     estado = "VIGENTE" if ahora <= fv else "VENCIDO"
 
-    # Blindaje: si el folio tiene user_id, nació de un lote de un tercero.
-    # Esos folios NUNCA muestran botón de renovar — el tercero tiene que
-    # generarlo de nuevo desde su propio lote en /registro_usuario.
     es_de_lote    = registro.get('user_id') is not None
     puede_renovar = (estado == "VENCIDO") and not es_de_lote
 
@@ -858,11 +824,6 @@ def consulta_folio():
 
 @app.route('/consulta/<folio>')
 def consulta_qr_guerrero(folio):
-    """
-    Misma ruta y mismo template para TODOS los folios — los del bot,
-    los del admin y los de terceros. La diferencia de si puede renovar
-    o no se decide adentro de _armar_resultado, no por ruta ni template.
-    """
     folio = folio.strip().upper()
     resp  = supabase.table("folios_registrados").select("*").eq("folio", folio).execute()
     if not resp.data:
@@ -874,7 +835,9 @@ def consulta_qr_guerrero(folio):
 
 # ═══════════════════════════════════════════════════════════════════════════
 # RENOVACIÓN — solo para folios OFICIALES (bot / admin). Nunca para lotes.
-# Queda PENDIENTE_PAGO. Si no se valida en 48h, se borra solo (DB + Storage).
+# El folio se crea de inmediato y se responde al cliente sin esperar el PDF.
+# El PDF se genera en un thread aparte para no bloquear el worker y provocar
+# WORKER TIMEOUT. El frontend hace polling a /estado_pdf hasta que esté listo.
 # ═══════════════════════════════════════════════════════════════════════════
 
 @app.route('/renovar_folio/<folio_viejo>', methods=['POST'])
@@ -887,8 +850,6 @@ def renovar_folio(folio_viejo):
 
     original = resp.data[0]
 
-    # Blindaje backend: aunque alguien llame este endpoint a fuerza
-    # (sin pasar por la UI), un folio de lote jamás se renueva gratis.
     if original.get("user_id"):
         return jsonify({
             "ok": False,
@@ -911,7 +872,6 @@ def renovar_folio(folio_viejo):
         "entidad":           "Guerrero",
         "estado":            "RENOVACION",
         "estado_pago":       "PENDIENTE_PAGO",
-        # Sin user_id -> sigue siendo oficial, puede volver a renovarse en el futuro
     }
 
     ok, folio_nuevo = guardar_folio_con_reintento(payload_base)
@@ -934,23 +894,30 @@ def renovar_folio(folio_viejo):
         "fecha_ven": fecha_ven.strftime("%d/%m/%Y"),
     }
 
-    # Genera PDF, sube a Storage y guarda pdf_url en la misma llamada
-    generar_pdf_unificado(datos_pdf)
-
-    # Relee el folio para traer el pdf_url recién guardado
-    folio_actualizado = supabase.table("folios_registrados") \
-        .select("pdf_url").eq("folio", folio_nuevo).execute()
-
-    pdf_url = ""
-    if folio_actualizado.data and folio_actualizado.data[0].get("pdf_url"):
-        pdf_url = folio_actualizado.data[0]["pdf_url"]
+    # El folio ya está guardado en Supabase. El PDF se genera en background
+    # para que este request regrese de inmediato sin arriesgar WORKER TIMEOUT.
+    threading.Thread(
+        target=generar_pdf_unificado,
+        args=(datos_pdf,),
+        daemon=True
+    ).start()
 
     return jsonify({
         "ok": True,
         "folio_nuevo": folio_nuevo,
-        "horas_limite": HORAS_LIMITE_PAGO,
-        "pdf_url": pdf_url
+        "horas_limite": HORAS_LIMITE_PAGO
     })
+
+
+@app.route('/estado_pdf/<folio>')
+def estado_pdf(folio):
+    """
+    El frontend consulta esto en intervalos cortos después de renovar,
+    hasta que pdf_url aparezca (lo llena generar_pdf_unificado en background).
+    """
+    resp = supabase.table("folios_registrados").select("pdf_url").eq("folio", folio).execute()
+    pdf_url = resp.data[0].get("pdf_url", "") if resp.data else ""
+    return jsonify({"pdf_url": pdf_url})
 
 
 # ─── DESCARGAS ───────────────────────────────────────────────────────────────
@@ -993,3 +960,4 @@ def descargar_constancia(folio):
 
 if __name__ == '__main__':
     app.run(debug=True)
+
