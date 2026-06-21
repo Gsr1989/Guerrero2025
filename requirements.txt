@@ -1,3 +1,4 @@
+APScheduler
 fastapi
 aiogram
 supabase
