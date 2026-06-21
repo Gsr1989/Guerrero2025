@@ -9,6 +9,7 @@ from io import BytesIO
 import os
 import string
 import threading
+import time
 
 app = Flask(__name__)
 app.secret_key = 'clave_muy_segura_123456'
@@ -199,15 +200,17 @@ def subir_pdf_a_storage(ruta_local: str, folio: str) -> str:
 def generar_pdf_unificado(datos: dict) -> str:
     """
     Genera permiso + recibo en un solo PDF, lo sube a Storage y guarda
-    la URL pública en Supabase. Llamar SIEMPRE con asyncio.to_thread o
-    threading.Thread cuando se invoca desde dentro de un request HTTP,
-    para no bloquear el worker de gunicorn y evitar WORKER TIMEOUT.
+    la URL pública en Supabase. Se llama SIEMPRE dentro de un thread aparte
+    cuando se invoca desde un request HTTP, para no bloquear el worker
+    de gunicorn y evitar WORKER TIMEOUT.
     """
     fol   = datos["folio"]
     final = f"{OUTPUT_DIR}/{fol}.pdf"
+    t0 = time.time()
     try:
         p1 = _generar_pdf_permiso(datos)
         p2 = _generar_pdf_recibo(datos)
+        print(f"[PDF THREAD] permiso+recibo generados en {time.time()-t0:.2f}s")
 
         if not p1 or not p2:
             fallback = p1 or p2
@@ -227,25 +230,33 @@ def generar_pdf_unificado(datos: dict) -> str:
                 except Exception:
                     pass
 
-        print(f"[PDF] Unificado OK: {final}")
+        print(f"[PDF] Unificado OK: {final} ({time.time()-t0:.2f}s)")
 
         if os.path.exists(final):
             url = subir_pdf_a_storage(final, fol)
+            print(f"[PDF THREAD] subido a storage en {time.time()-t0:.2f}s")
             if url:
                 try:
                     supabase.table("folios_registrados") \
                         .update({"pdf_url": url}).eq("folio", fol).execute()
+                    print(f"[PDF THREAD] pdf_url guardado en {time.time()-t0:.2f}s TOTAL")
                 except Exception as e:
                     print(f"[WARN] No se pudo guardar pdf_url en BD: {e}")
 
         return final
     except Exception as e:
-        print(f"[ERROR UNIFICADO] {e}")
+        print(f"[ERROR UNIFICADO] {e} (a los {time.time()-t0:.2f}s)")
         return ""
 
 
 # ═══════════════════════════════════════════════════════════════════════════
 # FOLIO AUTOMÁTICO — WATERMARK FORWARD-ONLY, RANGO COMPLETO AA0001-ZZ9999
+#
+# FIX CRÍTICO: antes preguntaba folio por folio a Supabase (1 request de red
+# por candidato). Si había varios folios ocupados seguidos, eso eran muchos
+# round-trips antes de encontrar uno libre y tumbaba el worker por timeout.
+# Ahora pide candidatos en bloques de 500 con UNA sola consulta (.in_) y
+# resuelve el primero libre en memoria con Python puro.
 # ═══════════════════════════════════════════════════════════════════════════
 
 FOLIO_WATERMARK_KEY = "GRO_FOLIO"
@@ -299,6 +310,7 @@ def _inicializar_watermark_folio() -> int:
     return inicio
 
 def _folio_existe(folio: str) -> bool:
+    """Se mantiene por compatibilidad, pero ya no se usa en el bucle principal."""
     try:
         r = supabase.table("folios_registrados").select("folio").eq("folio", folio).limit(1).execute()
         return len(r.data) > 0
@@ -307,16 +319,42 @@ def _folio_existe(folio: str) -> bool:
         return False
 
 def generar_folio_automatico() -> str:
+    """
+    Avanza el cursor SIEMPRE hacia adelante. Pide candidatos en bloques
+    de 500 con una sola consulta a Supabase (.in_) en vez de uno por uno,
+    y resuelve el primer hueco libre en memoria.
+    """
     actual = _inicializar_watermark_folio()
     total_slots = 26 * 26 * NUMEROS_POR_PREFIJO
+    BLOQUE = 500
+    revisados = 0
+    t0 = time.time()
 
-    for _ in range(total_slots):
-        actual += 1
-        folio = _entero_a_folio(actual)
-        if not _folio_existe(folio):
-            _sb_guardar_watermark_folio(actual)
-            print(f"[FOLIO] Asignado: {folio}")
-            return folio
+    while revisados < total_slots:
+        inicio = actual + 1
+        candidatos = [_entero_a_folio(inicio + i) for i in range(BLOQUE)]
+
+        try:
+            resp = supabase.table("folios_registrados") \
+                .select("folio").in_("folio", candidatos).execute()
+            ocupados = {r["folio"] for r in (resp.data or [])}
+        except Exception as e:
+            print(f"[ERROR] consultando bloque de folios: {e}")
+            ocupados = set()
+
+        print(f"[FOLIO] bloque de {BLOQUE} revisado en {time.time()-t0:.2f}s, "
+              f"ocupados={len(ocupados)}")
+
+        for i, folio in enumerate(candidatos):
+            if folio not in ocupados:
+                numero_final = inicio + i
+                _sb_guardar_watermark_folio(numero_final)
+                print(f"[FOLIO] Asignado: {folio} en {time.time()-t0:.2f}s total")
+                return folio
+
+        # Todo el bloque estaba ocupado -> avanza al siguiente bloque
+        actual = inicio + BLOQUE - 1
+        revisados += BLOQUE
 
     raise Exception("Rango de folios completamente agotado (6.7M ocupados)")
 
@@ -842,8 +880,12 @@ def consulta_qr_guerrero(folio):
 
 @app.route('/renovar_folio/<folio_viejo>', methods=['POST'])
 def renovar_folio(folio_viejo):
+    t0 = time.time()
+    print(f"[RENOVAR] INICIO folio_viejo={folio_viejo}")
+
     folio_viejo = folio_viejo.strip().upper()
     resp = supabase.table("folios_registrados").select("*").eq("folio", folio_viejo).execute()
+    print(f"[RENOVAR] select folio_viejo: {time.time()-t0:.2f}s")
 
     if not resp.data:
         return jsonify({"ok": False, "error": "Folio original no encontrado"}), 404
@@ -874,7 +916,10 @@ def renovar_folio(folio_viejo):
         "estado_pago":       "PENDIENTE_PAGO",
     }
 
+    t1 = time.time()
     ok, folio_nuevo = guardar_folio_con_reintento(payload_base)
+    print(f"[RENOVAR] guardar_folio_con_reintento: {time.time()-t1:.2f}s, folio_nuevo={folio_nuevo}")
+
     if not ok:
         return jsonify({"ok": False, "error": "No se pudo registrar la renovación"}), 500
 
@@ -902,6 +947,7 @@ def renovar_folio(folio_viejo):
         daemon=True
     ).start()
 
+    print(f"[RENOVAR] FIN, respondiendo JSON: {time.time()-t0:.2f}s total")
     return jsonify({
         "ok": True,
         "folio_nuevo": folio_nuevo,
@@ -960,4 +1006,3 @@ def descargar_constancia(folio):
 
 if __name__ == '__main__':
     app.run(debug=True)
-
