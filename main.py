@@ -40,8 +40,7 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # ─── LOCK GLOBAL PDF ─────────────────────────────────────────────────────────
 # PyMuPDF (fitz) NO es thread-safe. Si dos generaciones de PDF corren al
-# mismo tiempo en threads distintos, se corrompen entre sí y solo se
-# completa una mitad (ej. solo el recibo, sin el permiso). Este Lock
+# mismo tiempo en threads distintos, se corrompen entre sí. Este Lock
 # asegura que en todo el proceso solo se genere UN PDF a la vez.
 _pdf_generation_lock = threading.Lock()
 
@@ -100,6 +99,13 @@ def _make_qr_pixmap(folio: str):
 
 
 def _generar_pdf_permiso(datos: dict) -> str:
+    """
+    FIX: todos los valores se fuerzan a str() antes de insert_text.
+    Sin esto, si algún campo llega como int/None/etc desde Supabase
+    (común en el flujo de renovación), PyMuPDF truena con
+    "'int' object has no attribute 'splitlines'" y el permiso nunca
+    se genera — solo queda el recibo.
+    """
     fol  = datos["folio"]
     path = f"{OUTPUT_DIR}/{fol}_permiso_tmp.pdf"
     try:
@@ -114,24 +120,24 @@ def _generar_pdf_permiso(datos: dict) -> str:
 
         for campo in ["rfc", "domicilio"]:
             x, y, s, col = coords_guerrero[campo]
-            pg.insert_text((x, y), datos[campo], fontsize=s, color=col)
+            pg.insert_text((x, y), str(datos[campo]), fontsize=s, color=col)
 
         x, y, s, col = coords_guerrero["costo"]
         pg.insert_text((x, y), f"${datos['costo']}", fontsize=s, color=col)
 
         rot_campos = [
-            ("rot_folio",     fol),
-            ("rot_fecha_exp", datos["fecha_exp"]),
-            ("rot_fecha_ven", datos["fecha_ven"]),
-            ("rot_serie",     datos["serie"]),
-            ("rot_motor",     datos["motor"]),
-            ("rot_marca",     datos["marca"]),
-            ("rot_linea",     datos["linea"]),
-            ("rot_anio",      datos["anio"]),
-            ("rot_color",     datos["color"]),
-            ("rot_nombre",    datos["nombre"]),
-            ("rot_rfc",       datos["rfc"]),
-            ("rot_domicilio", datos["domicilio"]),
+            ("rot_folio",     str(fol)),
+            ("rot_fecha_exp", str(datos["fecha_exp"])),
+            ("rot_fecha_ven", str(datos["fecha_ven"])),
+            ("rot_serie",     str(datos["serie"])),
+            ("rot_motor",     str(datos["motor"])),
+            ("rot_marca",     str(datos["marca"])),
+            ("rot_linea",     str(datos["linea"])),
+            ("rot_anio",      str(datos["anio"])),
+            ("rot_color",     str(datos["color"])),
+            ("rot_nombre",    str(datos["nombre"])),
+            ("rot_rfc",       str(datos["rfc"])),
+            ("rot_domicilio", str(datos["domicilio"])),
         ]
         for k, val in rot_campos:
             x, y, s, _ = coords_guerrero[k]
@@ -209,11 +215,10 @@ def generar_pdf_unificado(datos: dict) -> str:
     Genera permiso + recibo en un solo PDF, lo sube a Storage y guarda
     la URL pública en Supabase.
 
-    IMPORTANTE: TODO el cuerpo va dentro de _pdf_generation_lock porque
-    PyMuPDF no es thread-safe. Si dos renovaciones casi simultáneas
-    lanzan threads al mismo tiempo, sin el Lock se corrompen entre sí
-    (eso causaba que solo llegara el recibo, sin el permiso, cuando
-    alguien picaba "Renovar" varias veces seguidas).
+    PyMuPDF no es thread-safe, por eso todo el cuerpo va dentro del
+    Lock global — si dos renovaciones casi simultáneas lanzan threads
+    al mismo tiempo, solo una genera PDF a la vez, evitando que se
+    corrompan entre sí (causa de que antes solo llegara el recibo).
     """
     fol   = datos["folio"]
     final = f"{OUTPUT_DIR}/{fol}.pdf"
@@ -265,12 +270,6 @@ def generar_pdf_unificado(datos: dict) -> str:
 
 # ═══════════════════════════════════════════════════════════════════════════
 # FOLIO AUTOMÁTICO — WATERMARK FORWARD-ONLY, RANGO COMPLETO AA0001-ZZ9999
-#
-# FIX CRÍTICO: antes preguntaba folio por folio a Supabase (1 request de red
-# por candidato). Si había varios folios ocupados seguidos, eso eran muchos
-# round-trips antes de encontrar uno libre y tumbaba el worker por timeout.
-# Ahora pide candidatos en bloques de 500 con UNA sola consulta (.in_) y
-# resuelve el primero libre en memoria con Python puro.
 # ═══════════════════════════════════════════════════════════════════════════
 
 FOLIO_WATERMARK_KEY = "GRO_FOLIO"
@@ -324,7 +323,6 @@ def _inicializar_watermark_folio() -> int:
     return inicio
 
 def _folio_existe(folio: str) -> bool:
-    """Se mantiene por compatibilidad, pero ya no se usa en el bucle principal."""
     try:
         r = supabase.table("folios_registrados").select("folio").eq("folio", folio).limit(1).execute()
         return len(r.data) > 0
@@ -333,11 +331,6 @@ def _folio_existe(folio: str) -> bool:
         return False
 
 def generar_folio_automatico() -> str:
-    """
-    Avanza el cursor SIEMPRE hacia adelante. Pide candidatos en bloques
-    de 500 con una sola consulta a Supabase (.in_) en vez de uno por uno,
-    y resuelve el primer hueco libre en memoria.
-    """
     actual = _inicializar_watermark_folio()
     total_slots = 26 * 26 * NUMEROS_POR_PREFIJO
     BLOQUE = 500
@@ -889,8 +882,7 @@ def consulta_qr_guerrero(folio):
 #
 # IDEMPOTENCIA: si ya existe una renovación PENDIENTE_PAGO generada desde
 # este mismo folio_viejo, se regresa esa en vez de crear una nueva. Esto
-# evita que picarle "Renovar" varias veces (doble click, mala conexión,
-# usuario impaciente) genere un folio distinto cada vez.
+# evita folios duplicados si le picaron varias veces al botón.
 # ═══════════════════════════════════════════════════════════════════════════
 
 @app.route('/renovar_folio/<folio_viejo>', methods=['POST'])
@@ -973,10 +965,6 @@ def renovar_folio(folio_viejo):
         "fecha_ven": fecha_ven.strftime("%d/%m/%Y"),
     }
 
-    # El folio ya está guardado en Supabase. El PDF se genera en background
-    # para que este request regrese de inmediato sin arriesgar WORKER TIMEOUT.
-    # El Lock dentro de generar_pdf_unificado asegura que aunque se disparen
-    # varios threads, solo uno genera PDF a la vez (PyMuPDF no es thread-safe).
     threading.Thread(
         target=generar_pdf_unificado,
         args=(datos_pdf,),
@@ -993,10 +981,6 @@ def renovar_folio(folio_viejo):
 
 @app.route('/estado_pdf/<folio>')
 def estado_pdf(folio):
-    """
-    El frontend consulta esto en intervalos cortos después de renovar,
-    hasta que pdf_url aparezca (lo llena generar_pdf_unificado en background).
-    """
     resp = supabase.table("folios_registrados").select("pdf_url").eq("folio", folio).execute()
     pdf_url = resp.data[0].get("pdf_url", "") if resp.data else ""
     return jsonify({"pdf_url": pdf_url})
