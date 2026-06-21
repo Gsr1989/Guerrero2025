@@ -68,6 +68,37 @@
         .btn-descargar:hover {
             background: #0056b3;
         }
+        .btn-validar {
+            background: #1a7d36;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            padding: 6px 14px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        .btn-validar:hover {
+            background: #14592a;
+        }
+        .badge-pendiente {
+            display: inline-block;
+            background: #c62828;
+            color: #fff;
+            font-size: 12px;
+            font-weight: bold;
+            padding: 3px 8px;
+            border-radius: 4px;
+        }
+        .badge-validado {
+            display: inline-block;
+            background: #1a7d36;
+            color: #fff;
+            font-size: 12px;
+            font-weight: bold;
+            padding: 3px 8px;
+            border-radius: 4px;
+        }
         .volver {
             margin: 30px auto;
             display: flex;
@@ -108,6 +139,7 @@
                 <th>Entidad</th>
                 <th>Fecha Expedición</th>
                 <th>Fecha Vencimiento</th>
+                <th>Estado Pago</th>
                 <th>Reimprimir PDF</th>
             </tr>
         </thead>
@@ -127,6 +159,18 @@
                 </td>
                 <td>
                     {{ registro.fecha_vencimiento[:10] if registro.fecha_vencimiento }}
+                </td>
+                <td>
+                    {% if registro.estado_pago == 'PENDIENTE_PAGO' %}
+                        <span class="badge-pendiente">PENDIENTE</span><br><br>
+                        <form method="POST" action="{{ url_for('validar_pago', folio=registro.folio) }}" style="margin:0;">
+                            <button type="submit" class="btn-validar" onclick="return confirm('¿Validar pago del folio {{ registro.folio }}? Ya no se eliminará automáticamente.')">
+                                Validar pago
+                            </button>
+                        </form>
+                    {% else %}
+                        <span class="badge-validado">VALIDADO</span>
+                    {% endif %}
                 </td>
                 <td>
                     <a class="btn-descargar" href="{{ url_for('descargar_pdf', folio=registro.folio) }}">Descargar PDF</a>
