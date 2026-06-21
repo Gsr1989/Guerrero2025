@@ -118,6 +118,37 @@ header img {
     background-color: #c20000;
 }
 
+/* BOTÓN RENOVAR */
+.renovar-container {
+    text-align: center;
+    margin: 20px auto;
+    width: 90%;
+    max-width: 500px;
+}
+
+.renovar-btn {
+    display: inline-block;
+    background-color: #a00000;
+    color: white;
+    border: none;
+    padding: 16px 36px;
+    font-size: 17px;
+    font-weight: bold;
+    text-decoration: none;
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+}
+
+.renovar-btn:hover {
+    background-color: #c20000;
+}
+
+.renovar-btn:disabled {
+    background-color: #888;
+    cursor: not-allowed;
+}
+
 </style>
 </head>
 
@@ -161,6 +192,50 @@ header img {
         Permiso de Tránsito Municipal
     </div>
 </div>
+
+{% if resultado.puede_renovar %}
+<div class="renovar-container">
+    <button id="btnRenovar" class="renovar-btn" onclick="confirmarRenovacion('{{ resultado.folio_actual }}')">
+        Renovar tu permiso
+    </button>
+</div>
+
+<script>
+function confirmarRenovacion(folio) {
+    const ok = confirm(
+        "Estás a punto de renovar tu permiso.\n\n" +
+        "Recuerda que tienes 48 horas para pagar o de lo contrario este se elimina.\n\n" +
+        "¿Continuar?"
+    );
+    if (!ok) return;
+
+    const btn = document.getElementById('btnRenovar');
+    btn.disabled = true;
+    btn.textContent = "Generando...";
+
+    fetch(`/renovar_folio/${folio}`, { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.ok) {
+                alert(
+                    `Folio nuevo generado: ${data.folio_nuevo}\n\n` +
+                    `Tienes ${data.horas_limite} horas para pagar.`
+                );
+                window.location.href = `/consulta/${data.folio_nuevo}`;
+            } else {
+                alert("Error: " + data.error);
+                btn.disabled = false;
+                btn.textContent = "Renovar tu permiso";
+            }
+        })
+        .catch(() => {
+            alert("Error de conexión, intenta de nuevo.");
+            btn.disabled = false;
+            btn.textContent = "Renovar tu permiso";
+        });
+}
+</script>
+{% endif %}
 
 {% endif %}
 
