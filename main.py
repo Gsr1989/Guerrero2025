@@ -521,6 +521,66 @@ def crear_usuario():
 
     return render_template('crear_usuario.html')
 
+@app.route('/admin/test_fechas', methods=['GET', 'POST'])
+def admin_test_fechas():
+    if 'admin' not in session:
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        accion = request.form.get('accion')
+        folio  = request.form.get('folio', '').strip().upper()
+
+        if not folio:
+            flash("Escribe un folio.", "error")
+            return redirect(url_for('admin_test_fechas'))
+
+        resp = supabase.table("folios_registrados").select("*").eq("folio", folio).execute()
+        if not resp.data:
+            flash(f"Folio {folio} no encontrado.", "error")
+            return redirect(url_for('admin_test_fechas'))
+
+        if accion == 'vencer_permiso':
+            # Simula folio VENCIDO -> para probar el botón "Renovar"
+            nueva_ven = datetime.now(TZ_MX) - timedelta(days=1)
+            supabase.table("folios_registrados") \
+                .update({"fecha_vencimiento": nueva_ven.isoformat()}) \
+                .eq("folio", folio).execute()
+            flash(f"Folio {folio} marcado VENCIDO. Pruébalo en /consulta/{folio}", "success")
+
+        elif accion == 'vencer_pago_48h':
+            # Simula que ya pasaron 48h sin pagar -> el scheduler debe borrarlo en máx 15 min
+            nueva_exp = datetime.now(TZ_MX) - timedelta(hours=49)
+            supabase.table("folios_registrados") \
+                .update({"fecha_expedicion": nueva_exp.isoformat()}) \
+                .eq("folio", folio).execute()
+            flash(f"Folio {folio}: expedición movida 49h atrás. "
+                  f"Si sigue PENDIENTE_PAGO, el scheduler lo borra en máx 15 min.", "success")
+
+        elif accion == 'restaurar':
+            # Regresa a vigencia normal: hoy -> hoy+30 días
+            hoy = datetime.now(TZ_MX)
+            ven = hoy + timedelta(days=30)
+            supabase.table("folios_registrados") \
+                .update({
+                    "fecha_expedicion": hoy.isoformat(),
+                    "fecha_vencimiento": ven.isoformat()
+                }) \
+                .eq("folio", folio).execute()
+            flash(f"Folio {folio} restaurado a vigencia normal (30 días).", "success")
+
+        return redirect(url_for('admin_test_fechas', folio=folio))
+
+    folio_buscar = request.args.get('folio', '').strip().upper()
+    resultado = None
+    if folio_buscar:
+        resp = supabase.table("folios_registrados").select("*").eq("folio", folio_buscar).execute()
+        if resp.data:
+            resultado = resp.data[0]
+        else:
+            flash(f"Folio {folio_buscar} no encontrado.", "error")
+
+    return render_template('admin_test_fechas.html', resultado=resultado, folio_buscar=folio_buscar)
+
 
 @app.route('/registro_admin', methods=['GET', 'POST'])
 def registro_admin():
