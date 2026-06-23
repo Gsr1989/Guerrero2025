@@ -53,9 +53,7 @@
             font-weight: bold;
         }
 
-        .boton:hover {
-            background-color: #145a9e;
-        }
+        .boton:hover { background-color: #145a9e; }
 
         .boton-usuarios {
             display: block;
@@ -73,9 +71,25 @@
             font-weight: bold;
         }
 
-        .boton-usuarios:hover {
-            background-color: #4a148c;
+        .boton-usuarios:hover { background-color: #4a148c; }
+
+        .boton-test {
+            display: block;
+            width: 90%;
+            max-width: 300px;
+            margin: 10px auto;
+            padding: 14px;
+            font-size: 16px;
+            background-color: #0277bd;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            font-weight: bold;
         }
+
+        .boton-test:hover { background-color: #01579b; }
 
         .boton-salir {
             display: block;
@@ -93,9 +107,7 @@
             font-weight: bold;
         }
 
-        .boton-salir:hover {
-            background-color: #a93226;
-        }
+        .boton-salir:hover { background-color: #a93226; }
 
         .logos {
             display: flex;
@@ -140,6 +152,7 @@
     <a class="boton" href="/consulta_folio">Consultar Folio</a>
     <a class="boton" href="/ver_registros">📋 Ver Registros Realizados</a>
     <a class="boton-usuarios" href="/admin/usuarios">👥 Gestión de Usuarios y Pagos</a>
+    <a class="boton-test" href="{{ url_for('admin_test_fechas') }}">🧪 Test Fechas</a>
     <a class="boton-salir" href="/logout">Cerrar Sesión</a>
 </div>
 
