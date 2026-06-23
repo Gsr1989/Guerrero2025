@@ -39,12 +39,9 @@ BUCKET_NAME       = "permisos-guerrero"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # ─── LOCK GLOBAL PDF ─────────────────────────────────────────────────────────
-# PyMuPDF (fitz) NO es thread-safe. Si dos generaciones de PDF corren al
-# mismo tiempo en threads distintos, se corrompen entre sí. Este Lock
-# asegura que en todo el proceso solo se genere UN PDF a la vez.
 _pdf_generation_lock = threading.Lock()
 
-# ─── COORDENADAS (extraídas del bot) ─────────────────────────────────────────
+# ─── COORDENADAS ─────────────────────────────────────────────────────────────
 coords_guerrero = {
     "folio":         (360, 769,  8, (1,0,0)),
     "fecha_exp":     (135, 755,  8, (0,0,0)),
@@ -99,13 +96,6 @@ def _make_qr_pixmap(folio: str):
 
 
 def _generar_pdf_permiso(datos: dict) -> str:
-    """
-    FIX: todos los valores se fuerzan a str() antes de insert_text.
-    Sin esto, si algún campo llega como int/None/etc desde Supabase
-    (común en el flujo de renovación), PyMuPDF truena con
-    "'int' object has no attribute 'splitlines'" y el permiso nunca
-    se genera — solo queda el recibo.
-    """
     fol  = datos["folio"]
     path = f"{OUTPUT_DIR}/{fol}_permiso_tmp.pdf"
     try:
@@ -184,42 +174,25 @@ def _generar_pdf_recibo(datos: dict) -> str:
         return ""
 
 
-# ═══════════════════════════════════════════════════════════════════════════
-# SUPABASE STORAGE — sube el PDF final al bucket, sobrevive a reinicios
-# ═══════════════════════════════════════════════════════════════════════════
-
 def subir_pdf_a_storage(ruta_local: str, folio: str) -> str:
     try:
         with open(ruta_local, "rb") as f:
             contenido = f.read()
-
         nombre_archivo = f"{folio}.pdf"
-
         supabase.storage.from_(BUCKET_NAME).upload(
             path=nombre_archivo,
             file=contenido,
             file_options={"content-type": "application/pdf", "upsert": "true"}
         )
-
         url = supabase.storage.from_(BUCKET_NAME).get_public_url(nombre_archivo)
         print(f"[STORAGE] Subido: {url}")
         return url
-
     except Exception as e:
         print(f"[ERROR STORAGE] No se pudo subir {folio}: {e}")
         return ""
 
 
 def generar_pdf_unificado(datos: dict) -> str:
-    """
-    Genera permiso + recibo en un solo PDF, lo sube a Storage y guarda
-    la URL pública en Supabase.
-
-    PyMuPDF no es thread-safe, por eso todo el cuerpo va dentro del
-    Lock global — si dos renovaciones casi simultáneas lanzan threads
-    al mismo tiempo, solo una genera PDF a la vez, evitando que se
-    corrompan entre sí (causa de que antes solo llegara el recibo).
-    """
     fol   = datos["folio"]
     final = f"{OUTPUT_DIR}/{fol}.pdf"
     t0 = time.time()
@@ -228,10 +201,8 @@ def generar_pdf_unificado(datos: dict) -> str:
         try:
             p1 = _generar_pdf_permiso(datos)
             p2 = _generar_pdf_recibo(datos)
-            print(f"[PDF THREAD] permiso+recibo generados en {time.time()-t0:.2f}s")
 
             if not p1 or not p2:
-                print(f"[WARN] PDF incompleto para {fol}: permiso={bool(p1)} recibo={bool(p2)}")
                 fallback = p1 or p2
                 if fallback and fallback != final:
                     import shutil
@@ -253,23 +224,21 @@ def generar_pdf_unificado(datos: dict) -> str:
 
             if os.path.exists(final):
                 url = subir_pdf_a_storage(final, fol)
-                print(f"[PDF THREAD] subido a storage en {time.time()-t0:.2f}s")
                 if url:
                     try:
                         supabase.table("folios_registrados") \
                             .update({"pdf_url": url}).eq("folio", fol).execute()
-                        print(f"[PDF THREAD] pdf_url guardado en {time.time()-t0:.2f}s TOTAL")
                     except Exception as e:
-                        print(f"[WARN] No se pudo guardar pdf_url en BD: {e}")
+                        print(f"[WARN] No se pudo guardar pdf_url: {e}")
 
             return final
         except Exception as e:
-            print(f"[ERROR UNIFICADO] {e} (a los {time.time()-t0:.2f}s)")
+            print(f"[ERROR UNIFICADO] {e}")
             return ""
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# FOLIO AUTOMÁTICO — WATERMARK FORWARD-ONLY, RANGO COMPLETO AA0001-ZZ9999
+# FOLIO AUTOMÁTICO
 # ═══════════════════════════════════════════════════════════════════════════
 
 FOLIO_WATERMARK_KEY = "GRO_FOLIO"
@@ -349,20 +318,17 @@ def generar_folio_automatico() -> str:
             print(f"[ERROR] consultando bloque de folios: {e}")
             ocupados = set()
 
-        print(f"[FOLIO] bloque de {BLOQUE} revisado en {time.time()-t0:.2f}s, "
-              f"ocupados={len(ocupados)}")
-
         for i, folio in enumerate(candidatos):
             if folio not in ocupados:
                 numero_final = inicio + i
                 _sb_guardar_watermark_folio(numero_final)
-                print(f"[FOLIO] Asignado: {folio} en {time.time()-t0:.2f}s total")
+                print(f"[FOLIO] Asignado: {folio} en {time.time()-t0:.2f}s")
                 return folio
 
         actual = inicio + BLOQUE - 1
         revisados += BLOQUE
 
-    raise Exception("Rango de folios completamente agotado (6.7M ocupados)")
+    raise Exception("Rango de folios completamente agotado")
 
 
 def guardar_folio_con_reintento(payload_base: dict, max_intentos=10) -> tuple:
@@ -383,7 +349,7 @@ def guardar_folio_con_reintento(payload_base: dict, max_intentos=10) -> tuple:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# LIMPIEZA 48H — borrado real de folios PENDIENTE_PAGO no validados
+# LIMPIEZA 48H
 # ═══════════════════════════════════════════════════════════════════════════
 
 def limpiar_folios_no_pagados():
@@ -398,16 +364,13 @@ def limpiar_folios_no_pagados():
         for row in (vencidos.data or []):
             folio = row["folio"]
             supabase.table("folios_registrados").delete().eq("folio", folio).execute()
-
             ruta = f"{OUTPUT_DIR}/{folio}.pdf"
             if os.path.exists(ruta):
                 os.remove(ruta)
-
             try:
                 supabase.storage.from_(BUCKET_NAME).remove([f"{folio}.pdf"])
             except Exception as e:
                 print(f"[WARN] No se pudo borrar {folio}.pdf de Storage: {e}")
-
             print(f"[LIMPIEZA 48H] Folio {folio} eliminado por falta de pago")
 
     except Exception as e:
@@ -419,7 +382,7 @@ scheduler.add_job(limpiar_folios_no_pagados, 'interval', minutes=15)
 scheduler.start()
 
 
-# ─── TIMER (sistema de usuarios de pago por folios) ──────────────────────────
+# ─── TIMER ───────────────────────────────────────────────────────────────────
 
 def get_timer_info(usuario):
     if usuario.get("pagado"):
@@ -434,9 +397,9 @@ def get_timer_info(usuario):
         limite   = creado_en + timedelta(hours=2)
         restante = (limite - datetime.utcnow()).total_seconds()
         return {
-            "limite_iso":        limite.isoformat(),
+            "limite_iso":         limite.isoformat(),
             "segundos_restantes": max(0, int(restante)),
-            "vencido":           restante <= 0
+            "vencido":            restante <= 0
         }
     except Exception as e:
         print(f"Error timer: {e}")
@@ -460,13 +423,8 @@ def login():
             session['admin'] = True
             return redirect(url_for('admin'))
 
-        response = (
-            supabase.table("verificaciondigitalcdmx")
-            .select("*")
-            .eq("username", username)
-            .eq("password", password)
-            .execute()
-        )
+        response = supabase.table("verificaciondigitalcdmx") \
+            .select("*").eq("username", username).eq("password", password).execute()
         if response.data:
             usuario = response.data[0]
             session['user_id']  = usuario['id']
@@ -496,20 +454,15 @@ def admin():
 def crear_usuario():
     if 'admin' not in session:
         return redirect(url_for('login'))
-
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
         folios   = int(request.form['folios'])
-
-        existe = (
-            supabase.table("verificaciondigitalcdmx")
+        existe   = supabase.table("verificaciondigitalcdmx") \
             .select("id").eq("username", username).execute()
-        )
         if existe.data:
             flash('Error: el nombre de usuario ya existe.', 'error')
             return render_template('crear_usuario.html')
-
         supabase.table("verificaciondigitalcdmx").insert({
             "username":       username,
             "password":       password,
@@ -518,8 +471,8 @@ def crear_usuario():
             "pagado":         False
         }).execute()
         flash('Usuario creado exitosamente.', 'success')
-
     return render_template('crear_usuario.html')
+
 
 @app.route('/admin/test_fechas', methods=['GET', 'POST'])
 def admin_test_fechas():
@@ -540,7 +493,6 @@ def admin_test_fechas():
             return redirect(url_for('admin_test_fechas'))
 
         if accion == 'vencer_permiso':
-            # Simula folio VENCIDO -> para probar el botón "Renovar"
             nueva_ven = datetime.now(TZ_MX) - timedelta(days=1)
             supabase.table("folios_registrados") \
                 .update({"fecha_vencimiento": nueva_ven.isoformat()}) \
@@ -548,7 +500,6 @@ def admin_test_fechas():
             flash(f"Folio {folio} marcado VENCIDO. Pruébalo en /consulta/{folio}", "success")
 
         elif accion == 'vencer_pago_48h':
-            # Simula que ya pasaron 48h sin pagar -> el scheduler debe borrarlo en máx 15 min
             nueva_exp = datetime.now(TZ_MX) - timedelta(hours=49)
             supabase.table("folios_registrados") \
                 .update({"fecha_expedicion": nueva_exp.isoformat()}) \
@@ -557,15 +508,13 @@ def admin_test_fechas():
                   f"Si sigue PENDIENTE_PAGO, el scheduler lo borra en máx 15 min.", "success")
 
         elif accion == 'restaurar':
-            # Regresa a vigencia normal: hoy -> hoy+30 días
             hoy = datetime.now(TZ_MX)
             ven = hoy + timedelta(days=30)
             supabase.table("folios_registrados") \
                 .update({
                     "fecha_expedicion": hoy.isoformat(),
                     "fecha_vencimiento": ven.isoformat()
-                }) \
-                .eq("folio", folio).execute()
+                }).eq("folio", folio).execute()
             flash(f"Folio {folio} restaurado a vigencia normal (30 días).", "success")
 
         return redirect(url_for('admin_test_fechas', folio=folio))
@@ -598,8 +547,9 @@ def registro_admin():
         contribuyente = request.form['contribuyente'].upper()
         vigencia      = int(request.form['vigencia'])
 
-        f_exp_str         = request.form.get('fecha_expedicion')
-        fecha_expedicion  = datetime.strptime(f_exp_str, "%Y-%m-%d").replace(tzinfo=TZ_MX) if f_exp_str else datetime.now(TZ_MX)
+        f_exp_str        = request.form.get('fecha_expedicion')
+        fecha_expedicion = datetime.strptime(f_exp_str, "%Y-%m-%d").replace(tzinfo=TZ_MX) \
+                           if f_exp_str else datetime.now(TZ_MX)
         fecha_vencimiento = fecha_expedicion + timedelta(days=vigencia)
 
         payload_base = {
@@ -615,6 +565,7 @@ def registro_admin():
             "entidad":           "Guerrero",
             "estado":            "ADMIN",
             "estado_pago":       "VALIDADO",
+            # SIN user_id → folio oficial, puede renovarse con autoservicio
         }
 
         if folio_manual:
@@ -651,7 +602,7 @@ def registro_admin():
             "fecha_ven": fecha_vencimiento.strftime("%d/%m/%Y"),
         }
 
-        generar_pdf_unificado(datos_pdf)
+        threading.Thread(target=generar_pdf_unificado, args=(datos_pdf,), daemon=True).start()
         return render_template("exitoso.html", folio=folio)
 
     return render_template('registro_admin.html', datetime=datetime)
@@ -661,10 +612,8 @@ def registro_admin():
 def ver_registros():
     if 'admin' not in session:
         return redirect(url_for('login'))
-    resp = (
-        supabase.table("folios_registrados")
+    resp = supabase.table("folios_registrados") \
         .select("*").order("fecha_expedicion", desc=True).execute()
-    )
     return render_template("mis_registros.html", registros=resp.data or [])
 
 
@@ -681,7 +630,7 @@ def validar_pago(folio):
     supabase.table("folios_registrados") \
         .update({"estado_pago": "VALIDADO"}).eq("folio", folio).execute()
     flash(f"Folio {folio} validado. Ya no se eliminará.", "success")
-    return redirect(url_for('ver_registros'))
+    return redirect(request.referrer or url_for('ver_registros'))
 
 
 @app.route('/admin/usuarios')
@@ -722,11 +671,9 @@ def marcar_pendiente(user_id):
 def api_timer_estado():
     if 'user_id' not in session:
         return jsonify({"error": "no auth"}), 401
-    resp = (
-        supabase.table("verificaciondigitalcdmx")
-        .select("pagado, created_at, folios_asignac, folios_usados")
+    resp = supabase.table("verificaciondigitalcdmx") \
+        .select("pagado, created_at, folios_asignac, folios_usados") \
         .eq("id", session['user_id']).execute()
-    )
     if not resp.data:
         return jsonify({"error": "no encontrado"}), 404
     usuario = resp.data[0]
@@ -739,7 +686,7 @@ def api_timer_estado():
     })
 
 
-# ─── USUARIO (3RO — vende lotes de folios) ───────────────────────────────────
+# ─── USUARIO (3RO) ───────────────────────────────────────────────────────────
 
 @app.route('/registro_usuario', methods=['GET', 'POST'])
 def registro_usuario():
@@ -759,15 +706,13 @@ def registro_usuario():
         contribuyente = request.form['contribuyente'].upper()
         vigencia      = int(request.form['vigencia'])
 
-        f_exp_str         = request.form.get('fecha_expedicion')
-        fecha_expedicion  = datetime.strptime(f_exp_str, "%Y-%m-%d").replace(tzinfo=TZ_MX) if f_exp_str else datetime.now(TZ_MX)
+        f_exp_str        = request.form.get('fecha_expedicion')
+        fecha_expedicion = datetime.strptime(f_exp_str, "%Y-%m-%d").replace(tzinfo=TZ_MX) \
+                           if f_exp_str else datetime.now(TZ_MX)
         fecha_vencimiento = fecha_expedicion + timedelta(days=vigencia)
 
-        u_data = (
-            supabase.table("verificaciondigitalcdmx")
-            .select("folios_asignac, folios_usados")
-            .eq("id", user_id).execute()
-        )
+        u_data = supabase.table("verificaciondigitalcdmx") \
+            .select("folios_asignac, folios_usados").eq("id", user_id).execute()
         if not u_data.data:
             flash("Error obteniendo datos del usuario.", "error")
             return redirect(url_for('registro_usuario'))
@@ -791,7 +736,7 @@ def registro_usuario():
             "entidad":           "Guerrero",
             "estado":            "PENDIENTE",
             "estado_pago":       "VALIDADO",
-            "user_id":           user_id,
+            "user_id":           user_id,   # CON user_id → lote, sin autoservicio renovación
         }
 
         if folio_manual:
@@ -832,23 +777,17 @@ def registro_usuario():
             "fecha_ven": fecha_vencimiento.strftime("%d/%m/%Y"),
         }
 
-        generar_pdf_unificado(datos_pdf)
-
+        threading.Thread(target=generar_pdf_unificado, args=(datos_pdf,), daemon=True).start()
         return render_template("exitoso.html", folio=folio)
 
     try:
-        response    = (
-            supabase.table("verificaciondigitalcdmx")
-            .select("folios_asignac, folios_usados, pagado, created_at")
+        response    = supabase.table("verificaciondigitalcdmx") \
+            .select("folios_asignac, folios_usados, pagado, created_at") \
             .eq("id", user_id).execute()
-        )
         folios_info = response.data[0] if response.data else {}
     except Exception:
-        response    = (
-            supabase.table("verificaciondigitalcdmx")
-            .select("folios_asignac, folios_usados")
-            .eq("id", user_id).execute()
-        )
+        response    = supabase.table("verificaciondigitalcdmx") \
+            .select("folios_asignac, folios_usados").eq("id", user_id).execute()
         folios_info = response.data[0] if response.data else {}
         folios_info['pagado'] = True
 
@@ -870,11 +809,9 @@ def mis_permisos():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     user_id = session['user_id']
-    resp    = (
-        supabase.table("folios_registrados")
-        .select("*").eq("user_id", user_id)
+    resp    = supabase.table("folios_registrados") \
+        .select("*").eq("user_id", user_id) \
         .order("fecha_expedicion", desc=True).execute()
-    )
     registros = resp.data or []
     for r in registros:
         r['tiene_pdf'] = bool(r.get('pdf_url')) or os.path.exists(f"{OUTPUT_DIR}/{r['folio']}.pdf")
@@ -884,6 +821,12 @@ def mis_permisos():
 # ─── CONSULTA PÚBLICA ────────────────────────────────────────────────────────
 
 def _armar_resultado(registro: dict, folio: str) -> dict:
+    """
+    PARCHE ANTI-ROBO:
+    puede_renovar = True solo si VENCIDO + no es lote + NO tiene renovación PENDIENTE_PAGO activa.
+    ya_renovado   = True si existe folio con folio_origen=folio y estado_pago=PENDIENTE_PAGO.
+    Evaluación server-side — aplica desde cualquier cel/browser.
+    """
     fe = datetime.fromisoformat(registro['fecha_expedicion'])
     fv = datetime.fromisoformat(registro['fecha_vencimiento'])
     if fe.tzinfo is None:
@@ -894,12 +837,27 @@ def _armar_resultado(registro: dict, folio: str) -> dict:
     ahora  = datetime.now(TZ_MX)
     estado = "VIGENTE" if ahora <= fv else "VENCIDO"
 
-    es_de_lote    = registro.get('user_id') is not None
-    puede_renovar = (estado == "VENCIDO") and not es_de_lote
+    es_de_lote = registro.get('user_id') is not None
+
+    # ── PARCHE: bloquear si ya hay renovación pendiente de pago ───────────────
+    ya_renovado = False
+    if estado == "VENCIDO" and not es_de_lote:
+        try:
+            chk = supabase.table("folios_registrados") \
+                .select("folio") \
+                .eq("folio_origen", folio) \
+                .eq("estado_pago", "PENDIENTE_PAGO") \
+                .limit(1).execute()
+            ya_renovado = bool(chk.data)
+        except Exception as e:
+            print(f"[RENOVAR CHECK] {e}")
+
+    puede_renovar = (estado == "VENCIDO") and not es_de_lote and not ya_renovado
 
     return {
         "estado":            estado,
         "folio":             folio,
+        "folio_actual":      folio,
         "fecha_expedicion":  fe.strftime("%d/%m/%Y"),
         "fecha_vencimiento": fv.strftime("%d/%m/%Y"),
         "marca":             registro.get('marca', ''),
@@ -908,7 +866,7 @@ def _armar_resultado(registro: dict, folio: str) -> dict:
         "numero_serie":      registro.get('numero_serie', ''),
         "numero_motor":      registro.get('numero_motor', ''),
         "puede_renovar":     puede_renovar,
-        "folio_actual":      folio,
+        "ya_renovado":       ya_renovado,   # ← nuevo para el template
     }
 
 
@@ -919,7 +877,8 @@ def consulta_folio():
         folio = request.form['folio'].strip().upper()
         resp  = supabase.table("folios_registrados").select("*").eq("folio", folio).execute()
         if not resp.data:
-            resultado = {"estado": "No encontrado", "folio": folio, "puede_renovar": False}
+            resultado = {"estado": "No encontrado", "folio": folio,
+                         "puede_renovar": False, "ya_renovado": False}
         else:
             resultado = _armar_resultado(resp.data[0], folio)
         return render_template("resultado_consulta.html", resultado=resultado)
@@ -931,18 +890,17 @@ def consulta_qr_guerrero(folio):
     folio = folio.strip().upper()
     resp  = supabase.table("folios_registrados").select("*").eq("folio", folio).execute()
     if not resp.data:
-        resultado = {"estado": "No encontrado", "folio": folio, "puede_renovar": False}
+        resultado = {"estado": "No encontrado", "folio": folio,
+                     "puede_renovar": False, "ya_renovado": False}
     else:
         resultado = _armar_resultado(resp.data[0], folio)
     return render_template("resultado_consulta.html", resultado=resultado)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# RENOVACIÓN — solo para folios OFICIALES (bot / admin). Nunca para lotes.
-#
-# IDEMPOTENCIA: si ya existe una renovación PENDIENTE_PAGO generada desde
-# este mismo folio_viejo, se regresa esa en vez de crear una nueva. Esto
-# evita folios duplicados si le picaron varias veces al botón.
+# RENOVACIÓN — PARCHE ANTI-ROBO COMPLETO
+# Bloqueo 1: folios de lote (user_id != null)
+# Bloqueo 2: ya existe PENDIENTE_PAGO para este folio → 409, no crea otro
 # ═══════════════════════════════════════════════════════════════════════════
 
 @app.route('/renovar_folio/<folio_viejo>', methods=['POST'])
@@ -952,20 +910,19 @@ def renovar_folio(folio_viejo):
     print(f"[RENOVAR] INICIO folio_viejo={folio_viejo}")
 
     resp = supabase.table("folios_registrados").select("*").eq("folio", folio_viejo).execute()
-    print(f"[RENOVAR] select folio_viejo: {time.time()-t0:.2f}s")
-
     if not resp.data:
         return jsonify({"ok": False, "error": "Folio original no encontrado"}), 404
 
     original = resp.data[0]
 
+    # Bloqueo 1: folios de lote
     if original.get("user_id"):
         return jsonify({
             "ok": False,
             "error": "Este folio fue emitido por un proveedor. Contacta a quien te lo entregó para renovarlo."
         }), 403
 
-    # ── IDEMPOTENCIA: evita folios duplicados si le picaron varias veces ──
+    # ── PARCHE ANTI-ROBO: bloquear si ya hay renovación pendiente ─────────────
     ya_existente = supabase.table("folios_registrados") \
         .select("folio") \
         .eq("folio_origen", folio_viejo) \
@@ -975,13 +932,12 @@ def renovar_folio(folio_viejo):
 
     if ya_existente.data:
         folio_existente = ya_existente.data[0]["folio"]
-        print(f"[RENOVAR] Ya existía renovación pendiente: {folio_existente}, "
-              f"regresando esa en vez de crear otra")
+        print(f"[RENOVAR] Bloqueado — ya existe pendiente: {folio_existente}")
         return jsonify({
-            "ok": True,
-            "folio_nuevo": folio_existente,
-            "horas_limite": HORAS_LIMITE_PAGO
-        })
+            "ok": False,
+            "error": "Ya tienes una renovación pendiente de pago. Envía tu comprobante para activarla o espera 48 horas.",
+            "folio_pendiente": folio_existente
+        }), 409
 
     fecha_exp = datetime.now(TZ_MX)
     fecha_ven = fecha_exp + timedelta(days=30)
@@ -1000,11 +956,11 @@ def renovar_folio(folio_viejo):
         "estado":            "RENOVACION",
         "estado_pago":       "PENDIENTE_PAGO",
         "folio_origen":      folio_viejo,
+        # SIN user_id → sigue siendo oficial, puede volver a renovarse
     }
 
-    t1 = time.time()
     ok, folio_nuevo = guardar_folio_con_reintento(payload_base)
-    print(f"[RENOVAR] guardar_folio_con_reintento: {time.time()-t1:.2f}s, folio_nuevo={folio_nuevo}")
+    print(f"[RENOVAR] folio_nuevo={folio_nuevo} ({time.time()-t0:.2f}s)")
 
     if not ok:
         return jsonify({"ok": False, "error": "No se pudo registrar la renovación"}), 500
@@ -1025,13 +981,9 @@ def renovar_folio(folio_viejo):
         "fecha_ven": fecha_ven.strftime("%d/%m/%Y"),
     }
 
-    threading.Thread(
-        target=generar_pdf_unificado,
-        args=(datos_pdf,),
-        daemon=True
-    ).start()
+    threading.Thread(target=generar_pdf_unificado, args=(datos_pdf,), daemon=True).start()
 
-    print(f"[RENOVAR] FIN, respondiendo JSON: {time.time()-t0:.2f}s total")
+    print(f"[RENOVAR] FIN {time.time()-t0:.2f}s total")
     return jsonify({
         "ok": True,
         "folio_nuevo": folio_nuevo,
@@ -1041,7 +993,7 @@ def renovar_folio(folio_viejo):
 
 @app.route('/estado_pdf/<folio>')
 def estado_pdf(folio):
-    resp = supabase.table("folios_registrados").select("pdf_url").eq("folio", folio).execute()
+    resp    = supabase.table("folios_registrados").select("pdf_url").eq("folio", folio).execute()
     pdf_url = resp.data[0].get("pdf_url", "") if resp.data else ""
     return jsonify({"pdf_url": pdf_url})
 
