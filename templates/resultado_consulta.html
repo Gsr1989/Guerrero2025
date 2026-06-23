@@ -10,7 +10,7 @@ html, body {
     margin: 0;
     padding: 0;
     font-family: 'Segoe UI', Tahoma, sans-serif;
-    background: url('{{ url_for('static', filename='img/fondo_grecas.png') }}') no-repeat center center;
+    background: url('{{ url_for("static", filename="img/fondo_grecas.png") }}') no-repeat center center;
     background-size: cover;
 }
 
@@ -31,20 +31,9 @@ header img {
     max-width: 500px;
 }
 
-.vigente {
-    background: #2d74b2;
-    color: white;
-}
-
-.vencido {
-    background: #b38b00;
-    color: white;
-}
-
-.no-encontrado {
-    background: #a00000;
-    color: white;
-}
+.vigente       { background: #2d74b2; color: white; }
+.vencido       { background: #b38b00; color: white; }
+.no-encontrado { background: #a00000; color: white; }
 
 .contenedor {
     background: #dcdcdc;
@@ -56,14 +45,8 @@ header img {
     box-shadow: 0 6px 18px rgba(0,0,0,0.2);
 }
 
-.info {
-    padding: 20px;
-    font-size: 16px;
-}
-
-.fila {
-    margin-bottom: 10px;
-}
+.info { padding: 20px; font-size: 16px; }
+.fila { margin-bottom: 10px; }
 
 .permiso-box {
     background: #eeeeee;
@@ -80,9 +63,7 @@ header img {
     margin-top: 20px;
 }
 
-.logos img {
-    height: 110px;
-}
+.logos img { height: 110px; }
 
 .leyenda {
     text-align: center;
@@ -102,14 +83,10 @@ header img {
     margin: 20px auto 60px;
 }
 
-.boton-container {
-    text-align: center;
-}
+.boton-container { text-align: center; }
+.salir-btn:hover { background-color: #c20000; }
 
-.salir-btn:hover {
-    background-color: #c20000;
-}
-
+/* ── BOTÓN RENOVAR ── */
 .renovar-container {
     text-align: center;
     margin: 20px auto;
@@ -129,15 +106,27 @@ header img {
     border-radius: 10px;
     cursor: pointer;
     box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+    width: 100%;
+    max-width: 400px;
 }
 
-.renovar-btn:hover {
-    background-color: #c20000;
-}
+.renovar-btn:hover    { background-color: #c20000; }
+.renovar-btn:disabled { background-color: #888; cursor: not-allowed; }
 
-.renovar-btn:disabled {
-    background-color: #888;
-    cursor: not-allowed;
+/* ── AVISO YA RENOVADO ── */
+.aviso-pendiente {
+    width: 90%;
+    max-width: 500px;
+    margin: 10px auto 20px auto;
+    padding: 14px 18px;
+    border-radius: 10px;
+    background-color: #fff3cd;
+    border: 2px solid #e0a800;
+    color: #7a5a00;
+    font-size: 14px;
+    text-align: center;
+    font-weight: bold;
+    line-height: 1.6;
 }
 
 .descarga-manual {
@@ -175,10 +164,9 @@ header img {
 
 {% else %}
 
-<div class="verificador 
+<div class="verificador
     {% if resultado.estado == 'VIGENTE' %}vigente
     {% else %}vencido{% endif %}">
-    
     {% if resultado.estado == 'VIGENTE' %}
         FOLIO {{ resultado.folio }} : VIGENTE
     {% else %}
@@ -196,15 +184,23 @@ header img {
         <div class="fila"><strong>Fecha Expedición:</strong> {{ resultado.fecha_expedicion }}</div>
         <div class="fila"><strong>Fecha Vencimiento:</strong> {{ resultado.fecha_vencimiento }}</div>
     </div>
-
     <div class="permiso-box">
         Permiso de Tránsito Municipal
     </div>
 </div>
 
-{% if resultado.puede_renovar %}
+{# ── BLOQUE RENOVACIÓN CON PARCHE ANTI-ROBO ── #}
+{% if resultado.ya_renovado %}
+<div class="aviso-pendiente">
+    ⚠️ Ya tienes una renovación en proceso.<br>
+    Envía tu comprobante de pago para activarla.<br>
+    Si no realizas el pago a tiempo, el folio se cancelará automáticamente.
+</div>
+
+{% elif resultado.puede_renovar %}
 <div class="renovar-container">
-    <button id="btnRenovar" class="renovar-btn" onclick="confirmarRenovacion('{{ resultado.folio_actual }}')">
+    <button id="btnRenovar" class="renovar-btn"
+            onclick="confirmarRenovacion('{{ resultado.folio_actual }}')">
         Renovar tu permiso
     </button>
 </div>
@@ -217,8 +213,9 @@ header img {
 function confirmarRenovacion(folio) {
     const ok = confirm(
         "Estás a punto de renovar tu permiso.\n\n" +
-        "Recuerda que tienes 48 horas para pagar o de lo contrario este se elimina.\n\n" +
-        "¿Continuar?"
+        "⚠️ Tienes solo 2 horas para realizar tu pago, " +
+        "de lo contrario el folio se eliminará automáticamente.\n\n" +
+        "¿Deseas continuar?"
     );
     if (!ok) return;
 
@@ -230,7 +227,7 @@ function confirmarRenovacion(folio) {
         .then(r => r.json())
         .then(data => {
             if (!data.ok) {
-                alert("Error: " + data.error);
+                alert("⚠️ " + data.error);
                 btn.disabled = false;
                 btn.textContent = "Renovar tu permiso";
                 return;
@@ -246,29 +243,18 @@ function confirmarRenovacion(folio) {
                     .then(estado => {
                         if (estado.pdf_url) {
                             clearInterval(checarPdf);
-
-                            // Navegación directa al PDF — más confiable en
-                            // móvil que un click programático tardío, que
-                            // Chrome a veces bloquea por seguridad.
                             window.location.href = estado.pdf_url;
-
-                            // Por si el navegador no navega de inmediato,
-                            // dejamos visible un botón manual de respaldo.
                             const cont = document.getElementById('descargaManual');
                             const link = document.getElementById('linkDescarga');
                             link.href = estado.pdf_url;
                             cont.style.display = 'block';
                             btn.style.display = 'none';
-
-                        } else if (intentos >= 10) {
+                        } else if (intentos >= 15) {
                             clearInterval(checarPdf);
                             window.location.href = `/consulta/${data.folio_nuevo}`;
                         }
                     })
-                    .catch(() => {
-                        // Falla puntual de esta consulta, seguimos
-                        // intentando en el siguiente ciclo.
-                    });
+                    .catch(() => {});
             }, 2000);
         })
         .catch(() => {
