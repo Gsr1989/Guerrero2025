@@ -40,9 +40,15 @@
             border: 1px solid #ccc;
             font-size: 15px;
             text-transform: uppercase;
+            box-sizing: border-box;
         }
         input[type="date"] {
             text-transform: none;
+        }
+        .ayuda {
+            font-size: 12px;
+            color: #777;
+            margin-top: 4px;
         }
         .btn {
             background-color: #1976d2;
@@ -75,7 +81,20 @@
             border: 1px solid #ccc;
             font-size: 15px;
             text-transform: uppercase;
+            box-sizing: border-box;
         }
+        /* ── MENSAJES (errores / éxito del servidor) ── */
+        .mensajes { margin-bottom: 18px; }
+        .mensaje {
+            padding: 12px 14px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        .mensaje.error   { background: #fdeaea; color: #a32020; border: 1px solid #eba9a9; }
+        .mensaje.success { background: #e7f8ee; color: #0a6b3d; border: 1px solid #9ad9b8; }
+        .mensaje.warning { background: #fff6e0; color: #8a6d00; border: 1px solid #f0dfae; }
         @media (max-width: 600px) {
             .formulario-contenedor {
                 padding: 20px 15px;
@@ -88,40 +107,61 @@
 </head>
 <body>
 
+{# Si el servidor no manda estos datos, el formulario sigue funcionando #}
+{% set f = f if f is defined else {} %}
+{% set hoy = fecha_hoy if fecha_hoy is defined else datetime.now().strftime('%Y-%m-%d') %}
+
 <div class="formulario-contenedor">
     <h2>Registro de Folio</h2>
 
+    {% with mensajes = get_flashed_messages(with_categories=true) %}
+        {% if mensajes %}
+        <div class="mensajes">
+            {% for categoria, texto in mensajes %}
+                <div class="mensaje {{ categoria }}">{{ texto }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    {% endwith %}
+
     <form method="POST">
         <label for="folio">Folio</label>
-        <input type="text" id="folio" name="folio" required>
+        <input type="text" id="folio" name="folio" maxlength="12" pattern="[A-Za-z0-9]{3,12}" placeholder="Vacío = se asigna el siguiente" value="{{ f.get('folio', '') }}">
+        <div class="ayuda">Déjalo vacío para que se asigne solo. Si lo escribes: solo letras y números (3 a 12).</div>
 
         <label for="marca">Marca</label>
-        <input type="text" id="marca" name="marca" required>
+        <input type="text" id="marca" name="marca" required value="{{ f.get('marca', '') }}">
 
         <label for="linea">Línea</label>
-        <input type="text" id="linea" name="linea" required>
+        <input type="text" id="linea" name="linea" required value="{{ f.get('linea', '') }}">
 
         <label for="anio">Año</label>
-        <input type="number" id="anio" name="anio" required>
+        <input type="number" id="anio" name="anio" required min="1900" max="2100" value="{{ f.get('anio', '') }}">
 
         <label for="serie">Número de Serie</label>
-        <input type="text" id="serie" name="serie" required>
+        <input type="text" id="serie" name="serie" required value="{{ f.get('serie', '') }}">
 
         <label for="motor">Número de Motor</label>
-        <input type="text" id="motor" name="motor" required>
+        <input type="text" id="motor" name="motor" required value="{{ f.get('motor', '') }}">
+
+        <!-- COLOR (el bot también lo pide) -->
+        <label for="color">Color</label>
+        <input type="text" id="color" name="color" required value="{{ f.get('color', '') }}">
 
         <label for="contribuyente">Nombre del Contribuyente</label>
-        <input type="text" id="contribuyente" name="contribuyente" required>
+        <input type="text" id="contribuyente" name="contribuyente" required value="{{ f.get('contribuyente', '') }}">
 
         <!-- FECHA DE EXPEDICIÓN -->
         <label for="fecha_expedicion">Fecha de Expedición</label>
-        <input type="date" id="fecha_expedicion" name="fecha_expedicion" value="{{ datetime.now().strftime('%Y-%m-%d') }}" required>
+        <input type="date" id="fecha_expedicion" name="fecha_expedicion" value="{{ f.get('fecha_expedicion') or hoy }}" required>
+        <div class="ayuda">Por defecto es hoy. Puedes elegir una fecha pasada (retroactivo) o futura.</div>
 
         <label for="vigencia">Vigencia</label>
+        {% set vig = f.get('vigencia', '30') %}
         <select id="vigencia" name="vigencia" required>
-            <option value="30" selected>30 días</option>
-            <option value="60">60 días</option>
-            <option value="90">90 días</option>
+            <option value="30" {% if vig == '30' %}selected{% endif %}>30 días</option>
+            <option value="60" {% if vig == '60' %}selected{% endif %}>60 días</option>
+            <option value="90" {% if vig == '90' %}selected{% endif %}>90 días</option>
         </select>
 
         <textarea id="autotexto" rows="5" placeholder="Pega aquí la descripción completa..."></textarea>
@@ -155,7 +195,7 @@ async function decodificarVIN(vin) {
 const campo = document.getElementById("autotexto");
 campo.addEventListener("input", () => {
     const texto = campo.value.toUpperCase();
-    const limpiar = txt => txt.replace(/(MARCA|L[ÍI]NEA|LINEA|SUBMARCA|MODELO|AÑO|N[ÚU]MERO DE SERIE|SERIE|MOTOR|CONTRIBUYENTE|NOMBRE|FOLIO|:)/g, '').trim();
+    const limpiar = txt => txt.replace(/(MARCA|L[ÍI]NEA|LINEA|SUBMARCA|MODELO|AÑO|N[ÚU]MERO DE SERIE|SERIE|MOTOR|CONTRIBUYENTE|NOMBRE|FOLIO|COLOR|:)/g, '').trim();
 
     const folio = texto.match(/\b[A-Z]{2}[0-9]{4,}\b/);
     if (folio) document.getElementById("folio").value = folio[0];
@@ -178,7 +218,14 @@ campo.addEventListener("input", () => {
     const motor = texto.match(/(MOTOR|HECHO EN|FABRICADO EN|SIN NÚMERO|S\/N|SN|NO TIENE|NO CUENTA)[\sA-Z0-9ÁÉÍÓÚÑ]*/);
     if (motor) document.getElementById("motor").value = limpiar(motor[0]);
 
-    const lineas = texto.split("\n").map(l => l.trim()).filter(l => l.length > 5 && isNaN(l));
+    // COLOR: toma lo que sigue a la palabra COLOR, solo de esa línea
+    const color = texto.match(/COLOR\s*:?\s*([A-ZÁÉÍÓÚÑ\/ ]+)/);
+    if (color) {
+        const valor = color[1].split(/\b(?:MARCA|L[ÍI]NEA|MODELO|AÑO|SERIE|MOTOR|CONTRIBUYENTE|NOMBRE|FOLIO)\b/)[0].trim();
+        if (valor) document.getElementById("color").value = valor;
+    }
+
+    const lineas = texto.split("\n").map(l => l.trim()).filter(l => l.length > 5 && isNaN(l) && !l.startsWith("COLOR"));
     if (lineas.length > 0) {
         const posibleNombre = lineas[lineas.length - 1];
         document.getElementById("contribuyente").value = limpiar(posibleNombre);
