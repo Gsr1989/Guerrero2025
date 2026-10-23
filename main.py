@@ -1,23 +1,18 @@
 """
 GUERRERO — FUSIÓN: panel web (Flask) + bot de Telegram (aiogram) en UN servicio.
 
-Antes eran dos servicios de Render ($14/mes). Ahora uno solo ($7/mes).
+  · FastAPI atiende /webhook (async) → Dispatcher de aiogram, y /health /healthz /status
+  · TODO lo demás (incluida /consulta/{folio}) se lo pasa a Flask con
+    WSGIMiddleware, sin tocar rutas
 
-El bot se había perdido (sobrescrito por accidente) y se recuperó desde el
-historial de GitHub. Al comparar con el panel se encontraron los mismos
-problemas de siempre: cada uno tenía su PROPIA copia de las coordenadas del
-PDF, del generador de PDF y del generador de folio — y ESTE ÚLTIMO con
-watermarks de Supabase DISTINTOS ("GRO_FOLIO" en el panel, "GUE" en el bot),
-o sea dos contadores corriendo en paralelo. Todo eso ya quedó unificado en
-config_guerrero.py.
+Cambio respecto a la versión anterior:
+  · Se quitó la ruta FastAPI /consulta/{folio}. Esa ruta ganaba sobre la de
+    Flask, así que el QR del permiso nunca mostraba VIGENTE/VENCIDO ni el
+    botón de renovar. Ahora el QR y la búsqueda manual usan la MISMA página
+    (templates/resultado_consulta.html), con el mismo diseño de la página
+    pública del bot + color y nombre del titular.
 
-  · FastAPI atiende /webhook (async) → Dispatcher de aiogram
-  · FastAPI también expone /consulta/{folio} — la página pública bonita con
-    Bootstrap que ya traía el bot; se queda ahí (gana sobre cualquier ruta
-    Flask con el mismo path, por cómo se resuelven las rutas al fusionar)
-  · TODO lo demás se lo pasa a Flask con WSGIMiddleware, sin tocar rutas
-
-Start command en Render:
+Start command en Render (OJO: -k uvicorn.workers.UvicornWorker y -w 1):
     gunicorn main:app -k uvicorn.workers.UvicornWorker -w 1 --timeout 120
 """
 
@@ -40,7 +35,7 @@ import panel_guerrero
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     cfg.logger.info("=" * 60)
-    cfg.logger.info("[SISTEMA] GUERRERO FUSIONADO v8.0 — panel + bot en un servicio")
+    cfg.logger.info("[SISTEMA] GUERRERO FUSIONADO v8.1 — panel + bot en un servicio")
     cfg.logger.info("=" * 60)
 
     try:
@@ -59,8 +54,7 @@ async def lifespan(app: FastAPI):
         pass
 
     cfg.logger.info("[SISTEMA] Panel en /  ·  Webhook en /webhook  ·  Consulta en /consulta/{folio}")
-    cfg.logger.info("[SISTEMA] Editor de tablas en /admin/editor")
-    cfg.logger.info("[SISTEMA] Ajuste de fechas en /admin/fechas")
+    cfg.logger.info("[SISTEMA] Menú admin en /admin/menu  ·  Editor en /admin/editor  ·  Fechas en /admin/fechas")
 
     yield
 
@@ -79,7 +73,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     lifespan=lifespan,
     title="GUERRERO — Panel + Bot",
-    version="8.0",
+    version="8.1",
     docs_url=None,
     redoc_url=None,
 )
@@ -96,23 +90,13 @@ async def telegram_webhook(request: Request):
         return JSONResponse({"ok": False, "error": str(e)}, status_code=200)
 
 
-# La página pública de verificación (Bootstrap, logos oficiales) ya venía
-# hecha en el bot como ruta FastAPI — se conserva tal cual. Por cómo se
-# resuelven las rutas al fusionar (FastAPI primero, Flask solo si nada más
-# respondió), esta SIEMPRE gana sobre cualquier ruta /consulta/<folio> que
-# tuviera el panel — es la misma que ya estaba viva en producción.
-@app.get("/consulta/{folio}")
-async def consulta_publica(folio: str):
-    return await bot_guerrero.render_consulta_publica(folio)
-
-
 # El bot original exponía su propio "/" con un JSON de salud — el panel
 # también quiere "/" (redirige a login). Gana el panel; el health se movió aquí.
 @app.get("/health")
 async def health():
     return {
         "ok":               True,
-        "sistema":          "GUERRERO FUSIONADO v8.0",
+        "sistema":          "GUERRERO FUSIONADO v8.1",
         "panel":            "Flask montado en /",
         "bot":              "aiogram via /webhook",
         "costo_fijo":       f"${cfg.COSTO_FIJO}",
@@ -121,6 +105,7 @@ async def health():
         "horas_limite_pago": cfg.HORAS_LIMITE_PAGO,
         "timers_activos":   len(bot_guerrero.timers_activos),
         "siguiente_folio":  cfg.leer_siguiente_folio(),
+        "menu_admin":       "/admin/menu",
         "editor_tablas":    "/admin/editor",
         "ajuste_fechas":    "/admin/fechas",
     }
@@ -135,7 +120,7 @@ async def healthz():
 @app.get("/status")
 async def status_detail():
     return {
-        "sistema":         "GUERRERO FUSIONADO v8.0",
+        "sistema":         "GUERRERO FUSIONADO v8.1",
         "timers_activos":  len(bot_guerrero.timers_activos),
         "folios":          bot_guerrero.snapshot_timers(),
         "siguiente_folio": cfg.leer_siguiente_folio(),
@@ -143,8 +128,7 @@ async def status_detail():
     }
 
 
-# Panel Flask al final: atrapa todo lo que no sea /webhook /consulta/{folio}
-# /health /healthz /status
+# Panel Flask al final: atrapa todo lo que no sea /webhook /health /healthz /status
 app.mount("/", WSGIMiddleware(panel_guerrero.flask_app))
 
 
