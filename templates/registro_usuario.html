@@ -41,6 +41,9 @@
             box-sizing: border-box;
         }
 
+        /* Los datos se guardan en mayúsculas (igual que en el bot) */
+        .formulario input[type="text"] { text-transform: uppercase; }
+
         .btn {
             background-color: #1976d2;
             color: #fff;
@@ -139,6 +142,80 @@
             margin-top: 3px;
         }
 
+        /* ── Mensajes del servidor (errores / éxito) ── */
+        .mensajes { margin-bottom: 14px; }
+
+        .mensaje {
+            padding: 12px 14px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .mensaje.error   { background: #fdeaea; color: #a32020; border: 1px solid #eba9a9; }
+        .mensaje.success { background: #e7f8ee; color: #0a6b3d; border: 1px solid #9ad9b8; }
+        .mensaje.warning { background: #fff6e0; color: #8a6d00; border: 1px solid #f0dfae; }
+
+        /* ── BLOQUEO: folios agotados ── */
+        .bloqueo {
+            background: linear-gradient(135deg, #b71c1c, #e53935);
+            color: #fff;
+            border-radius: 12px;
+            padding: 22px 18px;
+            text-align: center;
+            margin-bottom: 18px;
+            box-shadow: 0 6px 16px rgba(183, 28, 28, .35);
+        }
+
+        .bloqueo-icono {
+            font-size: 44px;
+            line-height: 1;
+            animation: latido 1.8s ease-in-out infinite;
+        }
+
+        .bloqueo-titulo {
+            font-size: 20px;
+            font-weight: bold;
+            margin-top: 8px;
+            letter-spacing: .5px;
+        }
+
+        .bloqueo-texto {
+            font-size: 14px;
+            margin-top: 6px;
+            line-height: 1.5;
+            opacity: .95;
+        }
+
+        @keyframes latido {
+            0%, 100% { transform: scale(1); }
+            50%      { transform: scale(1.12); }
+        }
+
+        .formulario fieldset {
+            border: 0;
+            margin: 0;
+            padding: 0;
+            min-width: 0;
+        }
+
+        .formulario fieldset[disabled] {
+            opacity: .45;
+            filter: grayscale(1);
+        }
+
+        .formulario fieldset[disabled] input,
+        .formulario fieldset[disabled] select {
+            background: #f1f1f1;
+            cursor: not-allowed;
+        }
+
+        .btn:disabled {
+            background-color: #9e9e9e;
+            cursor: not-allowed;
+        }
+
         @media (max-width: 600px) {
             .formulario { padding: 20px 15px; }
             .btn { font-size: 15px; }
@@ -147,6 +224,9 @@
 </head>
 <body>
 
+{# Si el servidor no manda estos datos, el formulario sigue funcionando #}
+{% set f = f if f is defined else {} %}
+
 <div class="formulario">
 
     <!-- ── BARRA DE FOLIOS ── -->
@@ -154,6 +234,7 @@
     {% set usados = folios_info.folios_usados | default(0) %}
     {% set pct   = ((usados / asig) * 100) | round | int if asig > 0 else 0 %}
     {% set color = '#e74c3c' if pct >= 80 else ('#f39c12' if pct >= 50 else '#27ae60') %}
+    {% set agotado = (asig - usados) <= 0 %}
 
     <label style="margin-top:0;">Folios disponibles</label>
     <div class="barra-wrap">
@@ -178,47 +259,86 @@
     {% endif %}
     </div>
 
+    <!-- ── BLOQUEO POR FOLIOS AGOTADOS ── -->
+    {% if agotado %}
+    <div class="bloqueo">
+        <div class="bloqueo-icono">🔒</div>
+        {% if asig > 0 %}
+            <div class="bloqueo-titulo">FOLIOS AGOTADOS</div>
+            <div class="bloqueo-texto">
+                Ya utilizaste tus {{ asig }} folios asignados.<br>
+                Contacta al administrador para que te asigne más.
+            </div>
+        {% else %}
+            <div class="bloqueo-titulo">SIN FOLIOS ASIGNADOS</div>
+            <div class="bloqueo-texto">
+                Todavía no tienes folios asignados.<br>
+                Contacta al administrador para que te los asigne.
+            </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- ── MENSAJES DEL SERVIDOR ── -->
+    {% with mensajes = get_flashed_messages(with_categories=true) %}
+        {% if mensajes %}
+        <div class="mensajes">
+            {% for categoria, texto in mensajes %}
+                <div class="mensaje {{ categoria }}">{{ texto }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    {% endwith %}
+
     <!-- ── FORMULARIO ── -->
     <form method="POST">
-
-        <label for="folio">Folio <span class="hint">(dejar vacío para generarlo automático)</span></label>
-        <input type="text" id="folio" name="folio" placeholder="Ej: GRO00001 — opcional">
+      <fieldset {% if agotado %}disabled{% endif %}>
 
         <label for="fecha_expedicion">Fecha de expedición</label>
         <input type="date" id="fecha_expedicion" name="fecha_expedicion"
-               value="{{ fecha_hoy }}" required>
+               value="{{ f.get('fecha_expedicion') or fecha_hoy }}" required>
+        <div class="hint">Por defecto es hoy. Puedes elegir una fecha pasada o futura.</div>
 
         <label for="marca">Marca</label>
-        <input type="text" id="marca" name="marca" placeholder="Marca" required>
+        <input type="text" id="marca" name="marca" placeholder="Marca" required
+               value="{{ f.get('marca', '') }}">
 
         <label for="linea">Línea</label>
-        <input type="text" id="linea" name="linea" placeholder="Línea" required>
+        <input type="text" id="linea" name="linea" placeholder="Línea" required
+               value="{{ f.get('linea', '') }}">
 
         <label for="anio">Año</label>
-        <input type="number" id="anio" name="anio" placeholder="Año" required>
+        <input type="number" id="anio" name="anio" placeholder="Año" required
+               min="1900" max="2100" value="{{ f.get('anio', '') }}">
 
         <label for="serie">Número de Serie</label>
-        <input type="text" id="serie" name="serie" placeholder="Número de Serie" required>
+        <input type="text" id="serie" name="serie" placeholder="Número de Serie" required
+               value="{{ f.get('serie', '') }}">
 
         <label for="motor">Número de Motor</label>
-        <input type="text" id="motor" name="motor" placeholder="Número de Motor" required>
+        <input type="text" id="motor" name="motor" placeholder="Número de Motor" required
+               value="{{ f.get('motor', '') }}">
 
         <label for="color">Color</label>
-        <input type="text" id="color" name="color" placeholder="Color del vehículo" required>. 
+        <input type="text" id="color" name="color" placeholder="Color del vehículo" required
+               value="{{ f.get('color', '') }}">
 
         <label for="contribuyente">Nombre del Contribuyente</label>
         <input type="text" id="contribuyente" name="contribuyente"
-               placeholder="Nombre del Contribuyente" required>
+               placeholder="Nombre del Contribuyente" required
+               value="{{ f.get('contribuyente', '') }}">
 
+        {% set vig = f.get('vigencia', '') %}
         <label for="vigencia">Vigencia</label>
         <select id="vigencia" name="vigencia" required>
             <option value="">Selecciona vigencia</option>
-            <option value="30">30 días</option>
-            <option value="60">60 días</option>
-            <option value="90">90 días</option>
+            <option value="30" {% if vig == '30' %}selected{% endif %}>30 días</option>
+            <option value="60" {% if vig == '60' %}selected{% endif %}>60 días</option>
+            <option value="90" {% if vig == '90' %}selected{% endif %}>90 días</option>
         </select>
 
-        <button type="submit" class="btn">Registrar Permiso</button>
+        <button type="submit" class="btn">{% if agotado %}🔒 Sin folios disponibles{% else %}Registrar Permiso{% endif %}</button>
+      </fieldset>
     </form>
 
     <a href="{{ url_for('mis_permisos') }}" class="btn-secundario">📋 Mis Permisos Generados</a>
