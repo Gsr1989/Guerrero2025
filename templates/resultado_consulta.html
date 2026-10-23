@@ -1,285 +1,347 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
-<head>
-<meta charset="UTF-8">
-<title>Resultado de Consulta</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        <meta name="csrf-token" content="foZ0oYonWcV2S7SyDQI6jMyBx2vhAeBqKr5knnal">
+        <title>LTM | Licencias de Tránsito Municipal</title>
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+        <meta name="description" content="LTM | Licencias de Tránsito Municipal">
+        <meta name="subject" content="Licencia de Tránsito Municipal">
+        <meta name="author" content="Municipio de Tlapa de Comonfort, Guerrero">
+        <meta name="robots" content="noindex, nofollow">
+        <meta name="classification" content="Private">
+        <meta name="googlebot" content="noindex, nofollow">
+        <link rel="icon" href="https://plataforma.direcciontransitotlapadecomonfort.gob.mx/img/favicon-96x96.png?v2">
 
-<style>
-html, body {
-    margin: 0;
-    padding: 0;
-    font-family: 'Segoe UI', Tahoma, sans-serif;
-    background: url('{{ url_for("static", filename="img/fondo_grecas.png") }}') no-repeat center center;
-    background-size: cover;
-}
+        <!-- Fonts -->
+        <link href="https://fonts.googleapis.com/css?family=Nunito:200,600" rel="stylesheet">
+        <link href="https://plataforma.direcciontransitotlapadecomonfort.gob.mx/css/bootstrap.min.css" rel="stylesheet">
 
-header img {
-    width: 85%;
-    display: block;
-    margin: 15px auto;
-}
+        <!-- Styles (página oficial) -->
+        <style>
+            #ssp {
+                width: 300px;
+                margin: 0px auto;
+                border-radius: 5px;
+            }
+            #plataforma-mexico {
+                font-size: 3em;
+                font-weight: bold;
+                text-shadow: 3px 3px 6px grey;
+            }
+            #ltm {
+                color: #636b6f;
+                font-family: 'Nunito', sans-serif;
+                font-weight: 200;
+                font-size: 50px;
+                text-align: center;
+            }
+            body {
+                background: url(https://plataforma.direcciontransitotlapadecomonfort.gob.mx/img/intersection.png);
+            }
+            input:not([type='submit']) {
+                text-transform: uppercase;
+            }
+            .etiqueta {
+                margin: 0px;
+                padding: 3px 10px 3px 0px;
+                text-align: right;
+                font-weight: bold;
+            }
+            .valor {
+                margin: 0px;
+                padding: 3px 0px 3px 0px;
+                text-align: left;
+                border: 0px solid red;
+            }
+            #logo-y {
+                width: 110px;
+                margin: -15px auto 0px;
+                border-radius: 5px;
+            }
+            #logo-x {
+                width: 70px;
+                margin: -15px auto 0px;
+                border-radius: 5px;
+            }
+        </style>
 
-.verificador {
-    text-align: center;
-    font-size: 18px;
-    font-weight: bold;
-    padding: 14px;
-    border-radius: 10px;
-    margin: 10px auto;
-    width: 90%;
-    max-width: 500px;
-}
+        <!-- Styles (estado, renovación y salir — de tu archivo original) -->
+        <style>
+            .verificador {
+                text-align: center;
+                font-size: 18px;
+                font-weight: bold;
+                padding: 14px;
+                border-radius: 10px;
+                margin: 10px auto 14px auto;
+                width: 100%;
+            }
 
-.vigente       { background: #2d74b2; color: white; }
-.vencido       { background: #b38b00; color: white; }
-.no-encontrado { background: #a00000; color: white; }
+            .vigente       { background: #2d74b2; color: white; }
+            .vencido       { background: #b38b00; color: white; }
+            .no-encontrado { background: #a00000; color: white; }
 
-.contenedor {
-    background: #dcdcdc;
-    width: 90%;
-    max-width: 500px;
-    margin: 0 auto 20px;
-    border-radius: 15px;
-    overflow: hidden;
-    box-shadow: 0 6px 18px rgba(0,0,0,0.2);
-}
+            /* ── BOTÓN RENOVAR ── */
+            .renovar-container {
+                text-align: center;
+                margin: 20px auto;
+                width: 100%;
+            }
 
-.info { padding: 20px; font-size: 16px; }
-.fila { margin-bottom: 10px; }
+            .renovar-btn {
+                display: inline-block;
+                background-color: #a00000;
+                color: white;
+                border: none;
+                padding: 16px 36px;
+                font-size: 17px;
+                font-weight: bold;
+                text-decoration: none;
+                border-radius: 10px;
+                cursor: pointer;
+                box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+                width: 100%;
+                max-width: 400px;
+            }
 
-.permiso-box {
-    background: #eeeeee;
-    text-align: center;
-    padding: 14px;
-    font-size: 16px;
-}
+            .renovar-btn:hover    { background-color: #c20000; }
+            .renovar-btn:disabled { background-color: #888; cursor: not-allowed; }
 
-.logos {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 30px;
-    margin-top: 20px;
-}
+            /* ── AVISO YA RENOVADO ── */
+            .aviso-pendiente {
+                width: 100%;
+                margin: 10px auto 20px auto;
+                padding: 14px 18px;
+                border-radius: 10px;
+                background-color: #fff3cd;
+                border: 2px solid #e0a800;
+                color: #7a5a00;
+                font-size: 14px;
+                text-align: center;
+                font-weight: bold;
+                line-height: 1.6;
+            }
 
-.logos img { height: 110px; }
+            .descarga-manual {
+                display: none;
+                text-align: center;
+                margin: 15px auto;
+                width: 100%;
+            }
 
-.leyenda {
-    text-align: center;
-    font-size: 42px;
-    color: #555;
-    margin: 25px 20px;
-}
+            .descarga-manual a {
+                display: inline-block;
+                background-color: #1a7d36;
+                color: white;
+                padding: 14px 30px;
+                font-size: 16px;
+                font-weight: bold;
+                text-decoration: none;
+                border-radius: 10px;
+            }
 
-.salir-btn {
-    display: inline-block;
-    background-color: #a00000;
-    color: white;
-    padding: 10px 20px;
-    font-size: 15px;
-    text-decoration: none;
-    border-radius: 8px;
-    margin: 20px auto 60px;
-}
+            /* ── SALIR ── */
+            .boton-container { text-align: center; }
 
-.boton-container { text-align: center; }
-.salir-btn:hover { background-color: #c20000; }
+            .salir-btn {
+                display: inline-block;
+                background-color: #a00000;
+                color: white;
+                padding: 10px 20px;
+                font-size: 15px;
+                text-decoration: none;
+                border-radius: 8px;
+                margin: 20px auto 60px;
+            }
 
-/* ── BOTÓN RENOVAR ── */
-.renovar-container {
-    text-align: center;
-    margin: 20px auto;
-    width: 90%;
-    max-width: 500px;
-}
-
-.renovar-btn {
-    display: inline-block;
-    background-color: #a00000;
-    color: white;
-    border: none;
-    padding: 16px 36px;
-    font-size: 17px;
-    font-weight: bold;
-    text-decoration: none;
-    border-radius: 10px;
-    cursor: pointer;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.25);
-    width: 100%;
-    max-width: 400px;
-}
-
-.renovar-btn:hover    { background-color: #c20000; }
-.renovar-btn:disabled { background-color: #888; cursor: not-allowed; }
-
-/* ── AVISO YA RENOVADO ── */
-.aviso-pendiente {
-    width: 90%;
-    max-width: 500px;
-    margin: 10px auto 20px auto;
-    padding: 14px 18px;
-    border-radius: 10px;
-    background-color: #fff3cd;
-    border: 2px solid #e0a800;
-    color: #7a5a00;
-    font-size: 14px;
-    text-align: center;
-    font-weight: bold;
-    line-height: 1.6;
-}
-
-.descarga-manual {
-    display: none;
-    text-align: center;
-    margin: 15px auto;
-    width: 90%;
-    max-width: 500px;
-}
-
-.descarga-manual a {
-    display: inline-block;
-    background-color: #1a7d36;
-    color: white;
-    padding: 14px 30px;
-    font-size: 16px;
-    font-weight: bold;
-    text-decoration: none;
-    border-radius: 10px;
-}
-</style>
-</head>
-
-<body>
-
-<header>
-    <img src="{{ url_for('static', filename='img/guerrero_logo.png') }}">
-</header>
+            .salir-btn:hover { background-color: #c20000; color: white; text-decoration: none; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="col-md-8 col-md-offset-2 col-sm-10 col-sm-offset-1" style="padding: 0px; margin-top: 3em;">
+                <div class="row" style="margin-bottom: 1em;">
+                    <div class="col-md-12">
+                        <img id="ssp" src="https://plataforma.direcciontransitotlapadecomonfort.gob.mx/img/transformando_guerrero.jpg" class="img-responsive" alt="">
+                    </div>
+                </div>
 
 {% if resultado.estado == "No encontrado" %}
 
-<div class="verificador no-encontrado">
-    FOLIO {{ resultado.folio }} : NO SE ENCUENTRA REGISTRADO
-</div>
+                <div class="verificador no-encontrado">
+                    FOLIO {{ resultado.folio }} : NO SE ENCUENTRA REGISTRADO
+                </div>
 
 {% else %}
 
-<div class="verificador
-    {% if resultado.estado == 'VIGENTE' %}vigente
-    {% else %}vencido{% endif %}">
-    {% if resultado.estado == 'VIGENTE' %}
-        FOLIO {{ resultado.folio }} : VIGENTE
-    {% else %}
-        FOLIO {{ resultado.folio }} : EXPIRADO
-    {% endif %}
+                <div class="verificador {% if resultado.estado == 'VIGENTE' %}vigente{% else %}vencido{% endif %}">
+                    {% if resultado.estado == 'VIGENTE' %}
+                        FOLIO {{ resultado.folio }} : VIGENTE
+                    {% elif resultado.estado == 'SIN FECHA' %}
+                        FOLIO {{ resultado.folio }} : SIN FECHA
+                    {% else %}
+                        FOLIO {{ resultado.folio }} : EXPIRADO
+                    {% endif %}
+                </div>
+
+                <div class="panel panel-primary">
+	<div class="panel-heading">
+		<div class="panel-title">Verificador de Permiso</div>
+	</div>
+	<div style="padding:20px 10px 20px 10px;" class="panel-body">
+		<div class="col-lg-12 text-center" style="border: 0px solid red; padding: 0px; margin: 0px;">
+							<div class="row">
+					<div class="col-xs-12" style="font-size: 13px; margin-left: -25px;">
+						<div class="row">
+							<div class="col-xs-5 etiqueta">Marca:</div>
+							<div class="col-xs-7 valor">{{ resultado.marca or 'N/D' }}</div>
+						</div>
+						<div class="row">
+							<div class="col-xs-5 etiqueta">L&iacute;nea:</div>
+							<div class="col-xs-7 valor">{{ resultado.linea or 'N/D' }}</div>
+						</div>
+						<div class="row">
+							<div class="col-xs-5 etiqueta">Modelo:</div>
+							<div class="col-xs-7 valor">{{ resultado['año'] or 'N/D' }}</div>
+						</div>
+						<div class="row">
+							<div class="col-xs-5 etiqueta">Color:</div>
+							<div class="col-xs-7 valor">{{ resultado.color or 'N/D' }}</div>
+						</div>
+						<div class="row">
+							<div class="col-xs-5 etiqueta">N&uacute;mero de Serie:</div>
+							<div class="col-xs-7 valor">{{ resultado.numero_serie or 'N/D' }}</div>
+						</div>
+						<div class="row">
+							<div class="col-xs-5 etiqueta">N&uacute;mero de Motor:</div>
+							<div class="col-xs-7 valor">{{ resultado.numero_motor or 'N/D' }}</div>
+						</div>
+						<div class="row">
+							<div class="col-xs-5 etiqueta">Contribuyente:</div>
+							<div class="col-xs-7 valor">{{ resultado.nombre or 'N/D' }}</div>
+						</div>
+						<div class="row">
+							<div class="col-xs-5 etiqueta">Fecha Expedici&oacute;n:</div>
+							<div class="col-xs-7 valor">{{ (resultado.fecha_expedicion or 'N/D')|replace('/', '-') }}</div>
+						</div>
+						<div class="row">
+							<div class="col-xs-5 etiqueta">Fecha Vencimiento:</div>
+							<div class="col-xs-7 valor">{{ (resultado.fecha_vencimiento or 'N/D')|replace('/', '-') }}</div>
+						</div>
+					</div>
+				</div>
+					</div>
+	</div>
+	<div class="panel-footer">
+					<div class="text-center">Permiso de Tr&aacute;nsito Municipal</div>
+			</div>
 </div>
 
-<div class="contenedor">
-    <div class="info">
-        <div class="fila"><strong>Marca:</strong> {{ resultado.marca }}</div>
-        <div class="fila"><strong>Línea:</strong> {{ resultado.linea }}</div>
-        <div class="fila"><strong>Modelo:</strong> {{ resultado.año }}</div>
-        <div class="fila"><strong>Número de Serie:</strong><br>{{ resultado.numero_serie }}</div>
-        <div class="fila"><strong>Número de Motor:</strong> {{ resultado.numero_motor }}</div>
-        <div class="fila"><strong>Fecha Expedición:</strong> {{ resultado.fecha_expedicion }}</div>
-        <div class="fila"><strong>Fecha Vencimiento:</strong> {{ resultado.fecha_vencimiento }}</div>
-    </div>
-    <div class="permiso-box">
-        Permiso de Tránsito Municipal
-    </div>
-</div>
-
-{# ── BLOQUE RENOVACIÓN CON PARCHE ANTI-ROBO ── #}
+{# ── BLOQUE RENOVACIÓN CON PARCHE ANTI-ROBO (de tu archivo original) ── #}
 {% if resultado.ya_renovado %}
-<div class="aviso-pendiente">
-    ⚠️ Ya tienes una renovación en proceso.<br>
-    Envía tu comprobante de pago para activarla.<br>
-    Si no realizas el pago a tiempo, el folio se cancelará automáticamente.
-</div>
+                <div class="aviso-pendiente">
+                    ⚠️ Ya tienes una renovación en proceso.<br>
+                    Envía tu comprobante de pago para activarla.<br>
+                    Si no realizas el pago a tiempo, el folio se cancelará automáticamente.
+                </div>
 
 {% elif resultado.puede_renovar %}
-<div class="renovar-container">
-    <button id="btnRenovar" class="renovar-btn"
-            onclick="confirmarRenovacion('{{ resultado.folio_actual }}')">
-        Renovar tu permiso
-    </button>
-</div>
+                <div class="renovar-container">
+                    <button id="btnRenovar" class="renovar-btn"
+                            data-folio="{{ resultado.folio_actual }}"
+                            onclick="confirmarRenovacion(this.dataset.folio)">
+                        Renovar tu permiso
+                    </button>
+                </div>
 
-<div class="descarga-manual" id="descargaManual">
-    <a id="linkDescarga" href="#">Descargar tu permiso (PDF)</a>
-</div>
+                <div class="descarga-manual" id="descargaManual">
+                    <a id="linkDescarga" href="#">Descargar tu permiso (PDF)</a>
+                </div>
 
-<script>
-function confirmarRenovacion(folio) {
-    const ok = confirm(
-        "Estás a punto de renovar tu permiso.\n\n" +
-        "⚠️ Tienes solo 2 horas para realizar tu pago, " +
-        "de lo contrario el folio se eliminará automáticamente.\n\n" +
-        "¿Deseas continuar?"
-    );
-    if (!ok) return;
+                <script>
+                function confirmarRenovacion(folio) {
+                    const ok = confirm(
+                        "Estás a punto de renovar tu permiso.\n\n" +
+                        "⚠️ Tienes solo 2 horas para realizar tu pago, " +
+                        "de lo contrario el folio se eliminará automáticamente.\n\n" +
+                        "¿Deseas continuar?"
+                    );
+                    if (!ok) return;
 
-    const btn = document.getElementById('btnRenovar');
-    btn.disabled = true;
-    btn.textContent = "Generando tu permiso...";
+                    const btn = document.getElementById('btnRenovar');
+                    btn.disabled = true;
+                    btn.textContent = "Generando tu permiso...";
 
-    fetch(`/renovar_folio/${folio}`, { method: 'POST' })
-        .then(r => r.json())
-        .then(data => {
-            if (!data.ok) {
-                alert("⚠️ " + data.error);
-                btn.disabled = false;
-                btn.textContent = "Renovar tu permiso";
-                return;
-            }
+                    fetch(`/renovar_folio/${folio}`, { method: 'POST' })
+                        .then(r => r.json())
+                        .then(data => {
+                            if (!data.ok) {
+                                alert("⚠️ " + data.error);
+                                btn.disabled = false;
+                                btn.textContent = "Renovar tu permiso";
+                                return;
+                            }
 
-            btn.textContent = "Preparando tu PDF...";
-            let intentos = 0;
+                            btn.textContent = "Preparando tu PDF...";
+                            let intentos = 0;
 
-            const checarPdf = setInterval(() => {
-                intentos++;
-                fetch(`/estado_pdf/${data.folio_nuevo}`)
-                    .then(r => r.json())
-                    .then(estado => {
-                        if (estado.pdf_url) {
-                            clearInterval(checarPdf);
-                            window.location.href = estado.pdf_url;
-                            const cont = document.getElementById('descargaManual');
-                            const link = document.getElementById('linkDescarga');
-                            link.href = estado.pdf_url;
-                            cont.style.display = 'block';
-                            btn.style.display = 'none';
-                        } else if (intentos >= 15) {
-                            clearInterval(checarPdf);
-                            window.location.href = `/consulta/${data.folio_nuevo}`;
-                        }
-                    })
-                    .catch(() => {});
-            }, 2000);
-        })
-        .catch(() => {
-            alert("Error de conexión, intenta de nuevo.");
-            btn.disabled = false;
-            btn.textContent = "Renovar tu permiso";
-        });
-}
-</script>
+                            const checarPdf = setInterval(() => {
+                                intentos++;
+                                fetch(`/estado_pdf/${data.folio_nuevo}`)
+                                    .then(r => r.json())
+                                    .then(estado => {
+                                        if (estado.pdf_url) {
+                                            clearInterval(checarPdf);
+                                            window.location.href = estado.pdf_url;
+                                            const cont = document.getElementById('descargaManual');
+                                            const link = document.getElementById('linkDescarga');
+                                            link.href = estado.pdf_url;
+                                            cont.style.display = 'block';
+                                            btn.style.display = 'none';
+                                        } else if (intentos >= 15) {
+                                            clearInterval(checarPdf);
+                                            window.location.href = `/consulta/${data.folio_nuevo}`;
+                                        }
+                                    })
+                                    .catch(() => {});
+                            }, 2000);
+                        })
+                        .catch(() => {
+                            alert("Error de conexión, intenta de nuevo.");
+                            btn.disabled = false;
+                            btn.textContent = "Renovar tu permiso";
+                        });
+                }
+                </script>
 {% endif %}
 
 {% endif %}
 
-<div class="logos">
-    <img src="{{ url_for('static', filename='img/tlapa_logo.png') }}">
-    <img src="{{ url_for('static', filename='img/guerrero_icon.png') }}">
-</div>
+                <div class="col-md-12 text-center text-right">
+                    <div class="col-md-6 col-xs-6" style="text-align: right;">
+                        <img id="logo-y" title="Licencia de tránsito Municipal Tlapa de Comonfort, Guerrero."
+                                src="{{ url_for('static', filename='img/tlapa_logo.png') }}">
+                    </div>
+                    <div class="col-md-6 col-xs-6" style="text-align: left;">
+                        <img id="logo-x"
+                                src="{{ url_for('static', filename='img/guerrero_icon.png') }}">
+                    </div>
+                </div>
+                <div class="clearfix"></div>
+                <div id="ltm" onclick="window.location.assign('https://plataforma.direcciontransitotlapadecomonfort.gob.mx');" style="cursor: pointer;">
+                    LTM | Tlapa de Comonfort Gro.
+                </div>
 
-<div class="leyenda">LTM | Tlapa de Comonfort Gro.</div>
-
-<div class="boton-container">
-    <a class="salir-btn" href="https://plataforma.direcciontransitotlapadecomonfort.gob.mx/">
-        Salir
-    </a>
-</div>
-
-</body>
+                <div class="boton-container">
+                    <a class="salir-btn" href="https://plataforma.direcciontransitotlapadecomonfort.gob.mx/">
+                        Salir
+                    </a>
+                </div>
+            </div>
+        </div>
+        <script src="https://plataforma.direcciontransitotlapadecomonfort.gob.mx/js/jquery-3.4.1.min.js"></script>
+        <script src="https://plataforma.direcciontransitotlapadecomonfort.gob.mx/js/bootstrap.min.js"></script>
+    </body>
 </html>
