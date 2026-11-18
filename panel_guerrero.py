@@ -30,7 +30,6 @@ import re
 import threading
 import time
 from datetime import datetime, timedelta, date
-from apscheduler.schedulers.background import BackgroundScheduler
 
 from config_guerrero import (
     supabase, logger, TZ_MX, today_mx,
@@ -228,57 +227,19 @@ def _buscar_pdf_storage(folio: str) -> str:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# LIMPIEZA 48H
+# LIMPIEZA 48H — ELIMINADA
+# Ya no hay barrido automático en BD: el único temporizador de pago es el del
+# bot (36 h, solo en RAM). Se dejan estas funciones vacías porque main.py las
+# llama en el lifespan.
 # ═══════════════════════════════════════════════════════════════════════════
 
-def limpiar_folios_no_pagados():
-    try:
-        limite = (datetime.now(TZ_MX) - timedelta(hours=HORAS_LIMITE_PAGO)).isoformat()
-        vencidos = supabase.table("folios_registrados") \
-            .select("folio") \
-            .eq("estado_pago", "PENDIENTE_PAGO") \
-            .lt("fecha_expedicion", limite) \
-            .execute()
-
-        for row in (vencidos.data or []):
-            folio = row["folio"]
-            supabase.table("folios_registrados").delete().eq("folio", folio).execute()
-            ruta = f"{OUTPUT_DIR}/{folio}.pdf"
-            if os.path.exists(ruta):
-                os.remove(ruta)
-            try:
-                supabase.storage.from_(BUCKET_NAME).remove([f"{folio}.pdf"])
-            except Exception as e:
-                print(f"[WARN] No se pudo borrar {folio}.pdf de Storage: {e}")
-            print(f"[LIMPIEZA 48H] Folio {folio} eliminado por falta de pago")
-
-    except Exception as e:
-        print(f"[ERROR limpieza 48h] {e}")
-
-
-_scheduler = None
-
-
 def iniciar_scheduler():
-    """Antes arrancaba al importar el módulo. Ahora lo llama main.py en el lifespan."""
-    global _scheduler
-    if _scheduler is not None:
-        return _scheduler
-    _scheduler = BackgroundScheduler(timezone="America/Mexico_City")
-    _scheduler.add_job(limpiar_folios_no_pagados, 'interval', minutes=15)
-    _scheduler.start()
-    print("[SCHEDULER] Limpieza 48h activa")
-    return _scheduler
+    print("[SCHEDULER] Desactivado (limpieza 48h eliminada)")
+    return None
 
 
 def detener_scheduler():
-    global _scheduler
-    if _scheduler is not None:
-        try:
-            _scheduler.shutdown(wait=False)
-        except Exception:
-            pass
-        _scheduler = None
+    return None
 
 
 # ─── TIMER ───────────────────────────────────────────────────────────────────
@@ -406,7 +367,7 @@ def admin_test_fechas():
                 .update({"fecha_expedicion": nueva_exp.isoformat()}) \
                 .eq("folio", folio).execute()
             flash(f"Folio {folio}: expedición movida 49h atrás. "
-                  f"Si sigue PENDIENTE_PAGO, el scheduler lo borra en máx 15 min.", "success")
+                  f"(La limpieza automática de 48h ya no existe: no se borrará solo.)", "success")
 
         elif accion == 'restaurar':
             hoy = datetime.now(TZ_MX)
@@ -648,10 +609,8 @@ def mis_permisos():
 
 def _armar_resultado(registro: dict, folio: str) -> dict:
     """
-    PARCHE ANTIRROBO:
-    puede_renovar = True solo si VENCIDO + no es lote + NO tiene renovación PENDIENTE_PAGO activa.
-    ya_renovado   = True si existe folio con folio_origen=folio y estado_pago=PENDIENTE_PAGO.
-    evaluación server-side - aplica desde cualquier cel/browser.
+    La renovación pública fue ELIMINADA: puede_renovar / ya_renovado van
+    siempre en False (se dejan por compatibilidad con templates viejos).
 
     VIGENTE/VENCIDO se compara por FECHA: el permiso vale todo el día de su
     fecha de vencimiento (antes se comparaba contra las 00:00 de ese día).
@@ -666,23 +625,6 @@ def _armar_resultado(registro: dict, folio: str) -> dict:
         print(f"[CONSULTA] fechas inválidas en {folio}: {e}")
         estado, fe_txt, fv_txt = "SIN FECHA", "N/D", "N/D"
 
-    es_de_lote = registro.get('user_id') is not None
-
-    # ── PARCHE: bloquear si ya hay renovación pendiente de pago ───────────────
-    ya_renovado = False
-    if estado == "VENCIDO" and not es_de_lote:
-        try:
-            chk = supabase.table("folios_registrados") \
-                .select("folio") \
-                .eq("folio_origen", folio) \
-                .eq("estado_pago", "PENDIENTE_PAGO") \
-                .limit(1).execute()
-            ya_renovado = bool(chk.data)
-        except Exception as e:
-            print(f"[RENOVAR CHECK] {e}")
-
-    puede_renovar = (estado == "VENCIDO") and not es_de_lote and not ya_renovado
-
     return {
         "estado":            estado,
         "folio":             folio,
@@ -696,8 +638,8 @@ def _armar_resultado(registro: dict, folio: str) -> dict:
         "nombre":            registro.get('nombre', ''),
         "numero_serie":      registro.get('numero_serie', ''),
         "numero_motor":      registro.get('numero_motor', ''),
-        "puede_renovar":     puede_renovar,
-        "ya_renovado":       ya_renovado,
+        "puede_renovar":     False,
+        "ya_renovado":       False,
     }
 
 
@@ -734,97 +676,12 @@ def consulta_qr_guerrero(folio):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# RENOVACIÓN - PARCHE ANTIRROBO COMPLETO
-# Bloqueo 1: folios de lote (user_id != null)
-# Bloqueo 2: ya existe PENDIENTE_PAGO para este folio → 409, no crea otro
+# RENOVACIÓN PÚBLICA — ELIMINADA (la ruta responde 410)
 # ═══════════════════════════════════════════════════════════════════════════
 
 @app.route('/renovar_folio/<folio_viejo>', methods=['POST'])
 def renovar_folio(folio_viejo):
-    t0 = time.time()
-    folio_viejo = folio_viejo.strip().upper()
-    print(f"[RENOVAR] INICIO folio_viejo={folio_viejo}")
-
-    resp = supabase.table("folios_registrados").select("*").eq("folio", folio_viejo).execute()
-    if not resp.data:
-        return jsonify({"ok": False, "error": "Folio original no encontrado"}), 404
-
-    original = resp.data[0]
-
-    # Bloqueo 1: folios de lote
-    if original.get("user_id"):
-        return jsonify({
-            "ok": False,
-            "error": "Este folio fue emitido por un proveedor. Contacta a quien te lo entregó para renovarlo."
-        }), 403
-
-    # ── PARCHE ANTIRROBO: bloquear si ya hay renovación pendiente ─────────────
-    ya_existente = supabase.table("folios_registrados") \
-        .select("folio") \
-        .eq("folio_origen", folio_viejo) \
-        .eq("estado_pago", "PENDIENTE_PAGO") \
-        .order("fecha_expedicion", desc=True) \
-        .limit(1).execute()
-
-    if ya_existente.data:
-        folio_existente = ya_existente.data[0]["folio"]
-        print(f"[RENOVAR] Bloqueado - ya existe pendiente: {folio_existente}")
-        return jsonify({
-            "ok": False,
-            "error": "Ya tienes una renovación pendiente de pago. Envía tu comprobante para activarla o espera 48 horas.",
-            "folio_pendiente": folio_existente
-        }), 409
-
-    fecha_exp = datetime.now(TZ_MX)
-    fecha_ven = fecha_exp + timedelta(days=30)
-
-    payload_base = {
-        "marca":             original.get("marca", ""),
-        "linea":             original.get("linea", ""),
-        "anio":              original.get("anio", ""),
-        "numero_serie":      original.get("numero_serie", ""),
-        "numero_motor":      original.get("numero_motor", ""),
-        "color":             original.get("color", "N/D"),
-        "nombre":            original.get("nombre", ""),
-        "fecha_expedicion":  fecha_exp.isoformat(),
-        "fecha_vencimiento": fecha_ven.isoformat(),
-        "entidad":           "Guerrero",
-        "estado":            "RENOVACION",
-        "estado_pago":       "PENDIENTE_PAGO",
-        "folio_origen":      folio_viejo,
-        # SIN user_id → sigue siendo oficial, puede volver a renovarse
-    }
-
-    ok, folio_nuevo = guardar_folio_con_reintento(payload_base)
-    print(f"[RENOVAR] folio_nuevo={folio_nuevo} ({time.time()-t0:.2f}s)")
-
-    if not ok:
-        return jsonify({"ok": False, "error": "No se pudo registrar la renovación"}), 500
-
-    datos_pdf = {
-        "folio":     folio_nuevo,
-        "marca":     original.get("marca", ""),
-        "linea":     original.get("linea", ""),
-        "anio":      original.get("anio", ""),
-        "serie":     original.get("numero_serie", ""),
-        "motor":     original.get("numero_motor", ""),
-        "color":     original.get("color", "N/D"),
-        "nombre":    original.get("nombre", ""),
-        "costo":     COSTO_FIJO,
-        "rfc":       RFC_FIJO,
-        "domicilio": DOMICILIO_FIJO,
-        "fecha_exp": fecha_exp.strftime("%d/%m/%Y"),
-        "fecha_ven": fecha_ven.strftime("%d/%m/%Y"),
-    }
-
-    threading.Thread(target=generar_subir_y_guardar_pdf, args=(datos_pdf,), daemon=True).start()
-
-    print(f"[RENOVAR] FIN {time.time()-t0:.2f}s total")
-    return jsonify({
-        "ok": True,
-        "folio_nuevo": folio_nuevo,
-        "horas_limite": HORAS_LIMITE_PAGO
-    })
+    return jsonify({"ok": False, "error": "La renovación en línea ya no está disponible."}), 410
 
 
 @app.route('/estado_pdf/<folio>')
@@ -880,6 +737,66 @@ def descargar_constancia(folio):
         return send_from_directory("static/constancias", filename, as_attachment=True)
     flash("La constancia no existe.", "error")
     return redirect(url_for('consulta_folio'))
+
+
+# ─── TIMERS DEL BOT (RAM) · DETENER TODOS ────────────────────────────────────
+
+def _page_timers(items, aviso=""):
+    from markupsafe import escape
+    filas = "".join(
+        f"<tr><td>{escape(t['folio'])}</td><td>{escape(t['user_id'])}</td>"
+        f"<td>{escape(t['restante'])}</td></tr>" for t in items
+    ) or '<tr><td colspan="3" style="text-align:center;color:#888">Sin timers activos</td></tr>'
+    boton = ""
+    if items:
+        boton = ('<form method="post" action="/admin/timers_todos/detener" '
+                 'onsubmit="return confirm(\'¿Detener TODOS los timers activos?\')">'
+                 '<button class="b" type="submit">🛑 Detener TODOS los timers</button></form>')
+    av = f'<div class="ok">{escape(aviso)}</div>' if aviso else ""
+    return f"""<!doctype html><html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Timers del Bot</title>
+<style>body{{font-family:Arial;background:#f4f4f4;margin:0;padding:20px;color:#333}}
+.c{{max-width:800px;margin:auto;background:#fff;border-radius:12px;padding:22px;box-shadow:0 0 10px rgba(0,0,0,.15)}}
+h1{{color:#0a3d62;font-size:22px;margin-top:0}}table{{width:100%;border-collapse:collapse;margin:16px 0}}
+th,td{{padding:10px;border-bottom:1px solid #eee;text-align:left}}th{{background:#fafafa}}
+.b{{background:#c0392b;color:#fff;border:0;border-radius:8px;padding:12px 18px;font-weight:bold;cursor:pointer}}
+.ok{{background:#d4edda;color:#155724;padding:10px;border-radius:8px;margin-bottom:12px}}
+a{{color:#0a3d62;font-weight:bold;text-decoration:none}}</style></head><body><div class="c">
+<h1>⏱️ Timers del Bot (RAM)</h1>{av}
+<table><tr><th>Folio</th><th>Telegram ID</th><th>Restante</th></tr>{filas}</table>
+{boton}<p><a href="/admin">← Volver al panel</a></p></div></body></html>"""
+
+
+@app.route('/admin/timers_todos')
+def admin_timers_todos():
+    if 'admin' not in session:
+        return redirect(url_for('login'))
+    import bot_guerrero
+    return _page_timers(bot_guerrero.snapshot_timers())
+
+
+@app.route('/admin/timers_todos/detener', methods=['POST'])
+def admin_timers_todos_detener():
+    if 'admin' not in session:
+        return redirect(url_for('login'))
+    try:
+        import bot_guerrero
+        folios = [t['folio'] for t in bot_guerrero.snapshot_timers()]
+        for f in folios:
+            try:
+                bot_guerrero.cancelar_timer_folio(f)
+            except Exception as e:
+                logger.error(f"[TIMERS] cancelando {f}: {e}")
+        if folios:
+            supabase.table("folios_registrados").update(
+                {"estado": "TIMER_DETENIDO", "fecha_detencion": datetime.now(TZ_MX).isoformat()}
+            ).in_("folio", folios).execute()
+        flash(f"Se detuvieron {len(folios)} timers.", "success")
+    except Exception as e:
+        flash(f"Error: {e}", "error")
+    import bot_guerrero
+    return _page_timers(bot_guerrero.snapshot_timers(), "Operación realizada.")
+
 
 
 # Editor de tablas, ajuste de fechas, menú y timers del bot (registran sus
