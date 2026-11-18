@@ -22,7 +22,6 @@ Los handlers, el FSM y los mensajes quedaron exactamente igual.
 
 from datetime import datetime, timedelta
 import asyncio
-import aiohttp
 
 from fastapi.responses import HTMLResponse
 from aiogram import Bot, Dispatcher, types
@@ -40,7 +39,7 @@ from config_guerrero import (
     generar_folio_guerrero, generar_subir_y_guardar_pdf, leer_siguiente_folio,
 )
 
-_bot_session = AiohttpSession(timeout=aiohttp.ClientTimeout(total=300))
+_bot_session = AiohttpSession(timeout=300)
 bot     = Bot(token=BOT_TOKEN, session=_bot_session)
 storage = MemoryStorage()
 dp      = Dispatcher(storage=storage)
@@ -254,6 +253,7 @@ async def banamex_cmd(message: types.Message, state: FSMContext):
             [InlineKeyboardButton(text=f"⏹️ Detener {f}", callback_data=f"detener_{f}")]
             for f in folios_activos
         ]
+        botones.append([InlineKeyboardButton(text="🛑 Cancelar TODOS los timers", callback_data="cancelar_todos")])
         await message.answer(
             f"📋 FOLIOS GUERRERO ACTIVOS ({len(folios_activos)}):\n\n" +
             "\n".join(lineas) + "\n\nPuedes detener el timer de cualquier folio:",
@@ -397,6 +397,48 @@ async def cb_detener(callback: CallbackQuery):
     else:
         await callback.answer("❌ Timer ya no activo", show_alert=True)
 
+@dp.callback_query(lambda c: c.data == "cancelar_todos")
+async def cb_cancelar_todos(callback: CallbackQuery):
+    n = len([f for f in obtener_folios_usuario(callback.from_user.id) if f in timers_activos])
+    if n == 0:
+        await callback.answer("No tienes timers activos.", show_alert=True); return
+    kb = InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(text="✅ Sí, cancelar todos", callback_data="cancelar_todos_si"),
+        InlineKeyboardButton(text="❌ No", callback_data="cancelar_todos_no"),
+    ]])
+    await callback.answer()
+    await callback.message.answer(
+        f"⚠️ CANCELAR TODOS LOS TIMERS\n\nSe detendrán {n} timer(es). Esos folios YA NO se "
+        f"eliminarán automáticamente a las 36 horas.\n\n¿Confirmas?",
+        reply_markup=kb)
+
+@dp.callback_query(lambda c: c.data == "cancelar_todos_no")
+async def cb_cancelar_todos_no(callback: CallbackQuery):
+    await callback.answer("Cancelado, tus timers siguen activos.")
+    try: await callback.message.edit_reply_markup(reply_markup=None)
+    except Exception: pass
+
+@dp.callback_query(lambda c: c.data == "cancelar_todos_si")
+async def cb_cancelar_todos_si(callback: CallbackQuery):
+    folios = [f for f in list(obtener_folios_usuario(callback.from_user.id)) if f in timers_activos]
+    for f in folios:
+        cancelar_timer_folio(f)
+    if folios:
+        try:
+            await asyncio.to_thread(lambda:
+                supabase.table("folios_registrados").update(
+                    {"estado": "TIMER_DETENIDO", "fecha_detencion": datetime.now().isoformat()}
+                ).in_("folio", folios).execute()
+            )
+        except Exception as e:
+            print(f"Error BD cancelar todos: {e}")
+    await callback.answer("Timers detenidos", show_alert=True)
+    try: await callback.message.edit_reply_markup(reply_markup=None)
+    except Exception: pass
+    await callback.message.answer(
+        f"🛑 TIMERS DETENIDOS\n\nSe detuvieron {len(folios)} timer(es). "
+        f"Esos folios ya NO se eliminarán automáticamente.\n\n📋 /banamex")
+
 @dp.message(lambda m: m.text and m.text.upper().startswith("SERO") and len(m.text) > 4)
 async def cmd_sero(message: types.Message):
     fa = message.text.upper()[4:].strip()
@@ -481,6 +523,7 @@ async def ver_folios(message: types.Message):
         botones.append([InlineKeyboardButton(
             text=f"⏹️ Detener {f}", callback_data=f"detener_{f}"
         )])
+        botones.append([InlineKeyboardButton(text="🛑 Cancelar TODOS los timers", callback_data="cancelar_todos")])
     await message.answer(
         f"📋 FOLIOS GUERRERO ACTIVOS ({len(fl)})\n\n" +
         "\n".join(rows) + "\n\n📋 /banamex",
@@ -644,4 +687,3 @@ async def render_consulta_publica(folio: str) -> HTMLResponse:
 </div>"""
 
     return HTMLResponse(wrap(panel))
-
