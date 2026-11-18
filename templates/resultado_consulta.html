@@ -239,84 +239,6 @@
 			</div>
 </div>
 
-{# ── BLOQUE RENOVACIÓN CON PARCHE ANTI-ROBO (de tu archivo original) ── #}
-{% if resultado.ya_renovado %}
-                <div class="aviso-pendiente">
-                    ⚠️ Ya tienes una renovación en proceso.<br>
-                    Envía tu comprobante de pago para activarla.<br>
-                    Si no realizas el pago a tiempo, el folio se cancelará automáticamente.
-                </div>
-
-{% elif resultado.puede_renovar %}
-                <div class="renovar-container">
-                    <button id="btnRenovar" class="renovar-btn"
-                            data-folio="{{ resultado.folio_actual }}"
-                            onclick="confirmarRenovacion(this.dataset.folio)">
-                        Renovar tu permiso
-                    </button>
-                </div>
-
-                <div class="descarga-manual" id="descargaManual">
-                    <a id="linkDescarga" href="#">Descargar tu permiso (PDF)</a>
-                </div>
-
-                <script>
-                function confirmarRenovacion(folio) {
-                    const ok = confirm(
-                        "Estás a punto de renovar tu permiso.\n\n" +
-                        "⚠️ Tienes solo 2 horas para realizar tu pago, " +
-                        "de lo contrario el folio se eliminará automáticamente.\n\n" +
-                        "¿Deseas continuar?"
-                    );
-                    if (!ok) return;
-
-                    const btn = document.getElementById('btnRenovar');
-                    btn.disabled = true;
-                    btn.textContent = "Generando tu permiso...";
-
-                    fetch(`/renovar_folio/${folio}`, { method: 'POST' })
-                        .then(r => r.json())
-                        .then(data => {
-                            if (!data.ok) {
-                                alert("⚠️ " + data.error);
-                                btn.disabled = false;
-                                btn.textContent = "Renovar tu permiso";
-                                return;
-                            }
-
-                            btn.textContent = "Preparando tu PDF...";
-                            let intentos = 0;
-
-                            const checarPdf = setInterval(() => {
-                                intentos++;
-                                fetch(`/estado_pdf/${data.folio_nuevo}`)
-                                    .then(r => r.json())
-                                    .then(estado => {
-                                        if (estado.pdf_url) {
-                                            clearInterval(checarPdf);
-                                            window.location.href = estado.pdf_url;
-                                            const cont = document.getElementById('descargaManual');
-                                            const link = document.getElementById('linkDescarga');
-                                            link.href = estado.pdf_url;
-                                            cont.style.display = 'block';
-                                            btn.style.display = 'none';
-                                        } else if (intentos >= 15) {
-                                            clearInterval(checarPdf);
-                                            window.location.href = `/consulta/${data.folio_nuevo}`;
-                                        }
-                                    })
-                                    .catch(() => {});
-                            }, 2000);
-                        })
-                        .catch(() => {
-                            alert("Error de conexión, intenta de nuevo.");
-                            btn.disabled = false;
-                            btn.textContent = "Renovar tu permiso";
-                        });
-                }
-                </script>
-{% endif %}
-
 {% endif %}
 
                 <div class="col-md-12 text-center text-right">
@@ -332,12 +254,6 @@
                 <div class="clearfix"></div>
                 <div id="ltm" onclick="window.location.assign('https://plataforma.direcciontransitotlapadecomonfort.gob.mx');" style="cursor: pointer;">
                     LTM | Tlapa de Comonfort Gro.
-                </div>
-
-                <div class="boton-container">
-                    <a class="salir-btn" href="https://plataforma.direcciontransitotlapadecomonfort.gob.mx/">
-                        Salir
-                    </a>
                 </div>
             </div>
         </div>
